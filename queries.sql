@@ -1,17 +1,40 @@
---Query 1:
+﻿--Query 1:
 --Contare il numero di lingue in cui le release contenute nel database sono scritte (il risultato deve contenere
 --soltanto il numero delle lingue, rinominato “Numero_Lingue”).
+
+SELECT COUNT(DISTINCT language) Numero_Lingue
+FROM release
 
 --Query 2:
 --Elencare gli artisti che hanno cantato canzoni in italiano (il risultato deve contenere il nome dell’artista e il nome
 --della lingua).
 
+SELECT DISTINCT artist_credit.name AS artist_name, language.name AS language
+FROM track
+JOIN medium ON track.medium = medium.id
+JOIN release ON medium.release = release.id
+JOIN language ON release.language = language.id AND language.name = 'Italian' --TO TEST ON FULL DB, HERE THERE ARE NO ITA SONGS
+JOIN artist_credit ON track.artist_credit = artist_credit.id
+
 --Query 3:
 --Elencare le release di cui non si conosce la lingua (il risultato deve contenere soltanto il nome della release).
+
+SELECT release.name
+FROM release
+JOIN language ON release.language = language.id AND language.iso_code_1 IS NULL
 
 --Query 4:
 --Elencare gli artisti il cui nome contiene tutte le vocali ed è composto da una sola parola (il risultato deve
 --contenere soltanto il nome dell’artista).
+
+SELECT name AS artist_name
+FROM artist
+WHERE 	    (artist.name LIKE '%A%' OR artist.name LIKE '%a%')
+	AND (artist.name LIKE '%E%' OR artist.name LIKE '%e%')
+	AND (artist.name LIKE '%I%' OR artist.name LIKE '%i%')
+	AND (artist.name LIKE '%O%' OR artist.name LIKE '%o%')
+	AND (artist.name LIKE '%U%' OR artist.name LIKE '%u%')
+	AND  artist.name NOT LIKE '% %'
 
 --Query 5:
 --Elencare tutti gli pseudonimi di Prince con il loro tipo, se disponibile (il risultato deve contenere lo pseudonimo
