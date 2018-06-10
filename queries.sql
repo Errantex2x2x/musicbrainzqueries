@@ -44,6 +44,13 @@ WHERE 	    (artist.name LIKE '%A%' OR artist.name LIKE '%a%')
 --Elencare tutti gli pseudonimi di Prince con il loro tipo, se disponibile (il risultato deve contenere lo pseudonimo
 --dell'artista, il nome dell’artista (cioè Prince) e il tipo di pseudonimo (se disponibile)).
 
+SELECT artist.name, alias.name, type.name
+FROM artist
+JOIN artist_alias alias ON alias.artist = artist.id
+JOIN artist_alias_type type ON alias.type = type.id
+WHERE artist.name = 'Prince'
+
+
 --Query 6:
 --Elencare le release di gruppi inglesi ancora in attività (il risultato deve contenere il nome del gruppo e il nome
 --della release e essere ordinato per nome del gruppo e nome della release)
@@ -54,12 +61,20 @@ JOIN artist_credit_name ON artist_credit.id = artist_credit_name.artist_credit
 JOIN artist ON artist.id = artist_credit_name.artist AND artist.ended = FALSE
 JOIN artist_type ON artist.type = artist_type.id AND artist_type.name = 'Group'
 JOIN area ON artist.area = area.id AND area.name = 'United Kingdom' --TODO siamo sicuri che vada bene uk?
+--NOTA:GUARDA LA QUERY 13. PENSO CHE VADA BENE UNITED KINGDOM
 ORDER BY artist.name, release_group.name
 
 --Query 7:
 --Trovare le release in cui il nome dell’artista è diverso dal nome accreditato nella release (il risultato deve
 --contenere il nome della release, il nome dell’artista accreditato (cioè artist_credit.name) e il nome dell’artista
 --(cioè artist.name))
+
+SELECT release.name, artist_credit.name, artist.name 
+FROM release 
+JOIN artist_credit ON release.artist_credit = artist_credit.id
+JOIN artist_credit_name ON artist_credit.id = artist_credit_name.artist_credit
+JOIN artist ON artist.id = artist_credit_name.artist
+WHERE artist.name <> artist_credit.name
 
 --Query 8:
 --Trovare gli artisti con meno di tre release (il risultato deve contenere il nome dell’artista ed il numero di
@@ -78,6 +93,29 @@ HAVING count(release.id) < 3
 --(scrivere due versioni della query con e senza operatore aggregato MAX).
 --07/05/18
 
+--Versione 1:
+WITH female_rec AS 
+(
+	SELECT recording.name AS recording_name, length, artist.name
+	FROM recording
+	JOIN artist_credit_name ON artist_credit_name.artist = recording.artist_credit
+	JOIN artist ON artist.id = artist_credit_name.artist
+	JOIN gender ON gender.id = artist.gender AND gender.name = 'Female'
+)
+SELECT *
+FROM female_rec
+WHERE length = ( SELECT MAX(length) AS max_length FROM female_rec )--Potrebbe ritornare più di un valore, in caso di pari lunghezza
+
+--Versione 2:
+SELECT rec.name AS rec, length, artist.name 
+FROM recording AS rec
+JOIN artist_credit_name ON artist_credit_name.artist = rec.artist_credit
+JOIN artist ON artist.id = artist_credit_name.artist
+JOIN gender ON gender.id = artist.gender AND gender.name = 'Female'
+WHERE length IS NOT NULL
+ORDER BY length DESC
+LIMIT 1
+
 --Query 10:
 --Elencare le lingue cui non corrisponde nessuna release (il risultato deve contenere il nome della lingua, il numero
 --di release in quella lingua, cioè 0, e essere ordinato per lingua) (scrivere due versioni della query).
@@ -88,13 +126,44 @@ EXCEPT
 SELECT language.name FROM language
 JOIN release ON release.language = language.id) AS result--TODO MANCA IL COUNT MA CHE CAZZO DI SENSO HA!?!?!
 ORDER BY result.name
-
+--Che schifo cazzo!!!
 --TODO FARE VERSIONE 2 CON LEFT O RIGHT JOIN
 
 --Query 11:
 --Ricavare la seconda registrazione per lunghezza di un artista uomo (il risultato deve comprendere l'artista
 --accreditato, il nome della registrazione e la sua lunghezza) (scrivere due versioni della query).
 
+--Versione 1:
+SELECT DISTINCT recording.name AS recording_name, length, artist.name
+FROM recording
+JOIN artist_credit_name ON artist_credit_name.artist = recording.artist_credit
+JOIN artist ON artist.id = artist_credit_name.artist
+JOIN gender ON gender.id = artist.gender AND gender.name = 'Male'
+WHERE length IS NOT NULL
+ORDER BY length DESC
+OFFSET 1 ROWS
+FETCH FIRST 1 ROWS ONLY
+
+--Versione 2:
+--Utilizzo il passaggio di binding per verificare che esista solamente un altro recording con lunghezza maggiore
+WITH male_rec AS 
+(
+	SELECT DISTINCT recording.name AS recording_name, length, artist.name
+	FROM recording
+	JOIN artist_credit_name ON artist_credit_name.artist = recording.artist_credit
+	JOIN artist ON artist.id = artist_credit_name.artist
+	JOIN gender ON gender.id = artist.gender AND gender.name = 'Male'
+	WHERE length IS NOT NULL
+)
+SELECT mr.* 
+FROM male_rec AS mr
+WHERE 1 = 
+(
+	SELECT COUNT(*) 
+	FROM male_rec 
+	WHERE male_rec.length > mr.length
+)
+ 
 --Query 12:
 --Per ogni stato esistente riportare la lunghezza totale delle registrazioni di artisti di quello stato (il risultato deve
 --comprendere il nome dello stato e la lunghezza totale in minuti delle registrazioni (0 se lo stato non ha
@@ -117,6 +186,32 @@ SELECT artist_credit.name, sum(length) FROM artist_credit LEFT JOIN recording ON
 --Ricavare gli artisti britannici che hanno pubblicato almeno 10 release (il risultato deve contenere il nome
 --dell’artista, il nome dello stato (cioè United Kingdom) e il numero di release) (scrivere due versioni della query).
 
+--Versione 1:
+SELECT artist.name, area.name, COUNT(release.name) AS releases_num
+FROM release 
+JOIN artist_credit ON release.artist_credit = artist_credit.id
+JOIN artist_credit_name ON artist_credit.id = artist_credit_name.artist_credit
+JOIN artist ON artist.id = artist_credit_name.artist
+JOIN area ON artist.area = area.id AND area.name = 'United Kingdom'
+GROUP BY artist.id, artist.name, area.name
+HAVING COUNT(release.name) >= 10
+
+--Versione 2:
+SELECT artist.name, 'United Kingdom', uk_rel.*
+FROM artist
+JOIN
+(
+	SELECT artist.id, COUNT(release.name) AS releases_num
+	FROM release
+	JOIN artist_credit ON release.artist_credit = artist_credit.id
+	JOIN artist_credit_name ON artist_credit.id = artist_credit_name.artist_credit
+	JOIN artist ON artist.id = artist_credit_name.artist
+	JOIN area ON artist.area = area.id AND area.name = 'United Kingdom'
+	GROUP BY artist.id
+) uk_rel
+ON uk_rel.id = artist.id
+WHERE releases_num >= 10
+
 --Query 14:
 --Considerando il numero medio di tracce tra le release pubblicate su CD, ricavare gli artisti che hanno pubblicato
 --esclusivamente release con più tracce della media (il risultato deve contenere il nome dell’artista e il numero di
@@ -126,6 +221,32 @@ SELECT artist_credit.name, sum(length) FROM artist_credit LEFT JOIN recording ON
 --Ricavare il primo artista morto dopo Louis Armstrong (il risultato deve contenere il nome dell’artista, la sua data
 --di nascita e la sua data di morte) (scrivere due versioni della query).
 
+--Dalla documentazione: Begin date represents date of birth, and end date represents date of death.
+--Questo vale solo per le persone, dobbiamo quindi usare 'Person' come artist_type
+
+--Versione 1:
+WITH louis AS 
+( 
+	SELECT MAKE_DATE(end_date_year,end_date_month,end_date_day) AS death
+	FROM artist 
+	WHERE name = 'Louis Armstrong' 
+)
+SELECT artist.name, MAKE_DATE(begin_date_year,begin_date_month,begin_date_day) AS birth, MAKE_DATE(end_date_year,end_date_month,end_date_day) AS death
+FROM artist
+JOIN artist_type ON artist.type = artist_type.id AND artist_type.name = 'Person'
+WHERE MAKE_DATE(end_date_year,end_date_month,end_date_day) > (SELECT * FROM louis)
+ORDER BY death 
+LIMIT 1
+
+--Versione 2:
+SELECT a.name, MAKE_DATE(a.begin_date_year,a.begin_date_month,a.begin_date_day) AS birth, MAKE_DATE(a.end_date_year,a.end_date_month,a.end_date_day) AS death
+FROM artist AS a
+JOIN artist_type ON a.type = artist_type.id AND artist_type.name = 'Person'
+JOIN artist AS l ON l.name = 'Louis Armstrong' 
+AND MAKE_DATE(a.end_date_year,a.end_date_month,a.end_date_day) > MAKE_DATE(l.end_date_year,l.end_date_month,l.end_date_day) 
+ORDER BY death
+FETCH FIRST 1 ROW ONLY
+
 --Query 16:
 --Elencare le coppie di etichette discografiche che non hanno mai fatto uscire una release in comune ma hanno fatto
 --uscire una release in collaborazione con una medesima terza etichetta (il risultato deve comprendere i nomi delle
@@ -134,3 +255,41 @@ SELECT artist_credit.name, sum(length) FROM artist_credit LEFT JOIN recording ON
 --Query 17 (facoltativa):
 --Trovare il nome e la lunghezza della traccia più lunga appartenente a una release rilasciata in almeno due paesi (il
 --risultato deve contenere il nome della traccia e la sua lunghezza in secondi) (scrivere due versioni della query).
+
+--Versione 1:
+WITH c_releases AS --Release uscite in più paesi
+(
+	SELECT release --,COUNT(*)
+	from release_country
+	GROUP BY release
+	HAVING COUNT(*)>1
+)
+SELECT track.name, track.length
+FROM track
+JOIN medium ON track.medium = medium.id
+JOIN release ON medium.release = release.id
+JOIN c_releases ON release.id = c_releases.release
+ORDER BY track.length DESC
+LIMIT 1
+
+--Versione 2:
+SELECT track.name, track.length
+FROM track
+JOIN
+(
+	SELECT MAX(track.length) AS max_length
+	FROM track
+	JOIN medium ON track.medium = medium.id
+	JOIN release ON medium.release = release.id
+	JOIN
+	(
+		SELECT release --,COUNT(*)
+		from release_country
+		GROUP BY release
+		HAVING COUNT(*)>1
+	) c_releases 
+	ON release.id = c_releases.release
+) max_track
+ON track.length = max_track.max_length
+FETCH FIRST 1 ROW ONLY
+ 
