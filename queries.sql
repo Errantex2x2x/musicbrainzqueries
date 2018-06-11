@@ -129,13 +129,14 @@ AND female_rec.length IS NOT NULL
 --Elencare le lingue cui non corrisponde nessuna release (il risultato deve contenere il nome della lingua, il numero
 --di release in quella lingua, cioè 0, e essere ordinato per lingua) (scrivere due versioni della query).
 
-SELECT * FROM
-(SELECT language.name FROM language
-EXCEPT
-SELECT language.name FROM language
-JOIN release ON release.language = language.id) AS result--TODO MANCA IL COUNT MA CHE CAZZO DI SENSO HA!?!?!
+SELECT *, 0 AS num_releases FROM
+(
+	SELECT language.name FROM language
+	EXCEPT
+	SELECT language.name FROM language
+	JOIN release ON release.language = language.id
+) AS result
 ORDER BY result.name
---Che schifo cazzo!!!
 --TODO FARE VERSIONE 2 CON LEFT O RIGHT JOIN
 
 --Query 11:
@@ -194,7 +195,7 @@ GROUP BY area.id
 --Test left join (funziona ma comunque niente zeri)
 SELECT artist_credit.name, sum(length) FROM artist_credit LEFT JOIN recording ON artist_credit.id = recording.artist_credit GROUP BY artist_credit.id
 
---TODO SECONDA VERSIONE
+--TODO SECONDA VERSIONE usa coalesce
 
 --Query 13:
 --Ricavare gli artisti britannici che hanno pubblicato almeno 10 release (il risultato deve contenere il nome
