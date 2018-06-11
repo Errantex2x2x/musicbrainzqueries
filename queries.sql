@@ -96,25 +96,34 @@ HAVING count(release.id) < 3
 --Versione 1:
 WITH female_rec AS 
 (
-	SELECT recording.name AS recording_name, length, artist.name
+	SELECT recording.name AS recording_name, length, artist.name AS artist_name
 	FROM recording
 	JOIN artist_credit_name ON artist_credit_name.artist = recording.artist_credit
 	JOIN artist ON artist.id = artist_credit_name.artist
 	JOIN gender ON gender.id = artist.gender AND gender.name = 'Female'
 )
-SELECT *
+SELECT recording_name, length/60000 + length%60/100. AS length, artist_name
 FROM female_rec
 WHERE length = ( SELECT MAX(length) AS max_length FROM female_rec )--Potrebbe ritornare più di un valore, in caso di pari lunghezza
 
 --Versione 2:
-SELECT rec.name AS rec, length, artist.name 
-FROM recording AS rec
-JOIN artist_credit_name ON artist_credit_name.artist = rec.artist_credit
-JOIN artist ON artist.id = artist_credit_name.artist
-JOIN gender ON gender.id = artist.gender AND gender.name = 'Female'
-WHERE length IS NOT NULL
-ORDER BY length DESC
-LIMIT 1
+WITH female_rec AS 
+(
+	SELECT recording.id, recording.name AS recording_name, length, artist.name AS artist_name
+	FROM recording
+	JOIN artist_credit_name ON artist_credit_name.artist = recording.artist_credit
+	JOIN artist ON artist.id = artist_credit_name.artist
+	JOIN gender ON gender.id = artist.gender AND gender.name = 'Female'
+)
+SELECT recording_name, length/60000 + length%60/100. AS length, artist_name
+FROM female_rec
+WHERE id NOT IN
+(
+	SELECT r1.id
+	FROM female_rec r1
+	JOIN female_rec r2 ON r1.length < r2.length
+)
+AND female_rec.length IS NOT NULL
 
 --Query 10:
 --Elencare le lingue cui non corrisponde nessuna release (il risultato deve contenere il nome della lingua, il numero
@@ -134,15 +143,20 @@ ORDER BY result.name
 --accreditato, il nome della registrazione e la sua lunghezza) (scrivere due versioni della query).
 
 --Versione 1:
-SELECT DISTINCT recording.name AS recording_name, length, artist.name
-FROM recording
-JOIN artist_credit_name ON artist_credit_name.artist = recording.artist_credit
-JOIN artist ON artist.id = artist_credit_name.artist
-JOIN gender ON gender.id = artist.gender AND gender.name = 'Male'
-WHERE length IS NOT NULL
-ORDER BY length DESC
-OFFSET 1 ROWS
-FETCH FIRST 1 ROWS ONLY
+--definita male_rec come tabella contenente le registrazioni degli artisti uomini,
+--prendiamo la registrazione più lunga tra tutte le registrazioni minori della più lunga in assoluto.
+WITH male_rec AS 
+(
+	SELECT DISTINCT recording.name AS recording_name, length, artist.name
+	FROM recording
+	JOIN artist_credit_name ON artist_credit_name.artist = recording.artist_credit
+	JOIN artist ON artist.id = artist_credit_name.artist
+	JOIN gender ON gender.id = artist.gender AND gender.name = 'Male'
+	WHERE length IS NOT NULL
+)
+SELECT DISTINCT *
+FROM male_rec
+WHERE length = (SELECT MAX(length) FROM male_rec WHERE length < (SELECT MAX(length) FROM male_rec))
 
 --Versione 2:
 --Utilizzo il passaggio di binding per verificare che esista solamente un altro recording con lunghezza maggiore
@@ -168,7 +182,7 @@ WHERE 1 =
 --Per ogni stato esistente riportare la lunghezza totale delle registrazioni di artisti di quello stato (il risultato deve
 --comprendere il nome dello stato e la lunghezza totale in minuti delle registrazioni (0 se lo stato non ha
 --registrazioni) (scrivere due versioni della query).
-
+--TODO DEVONO ESSERE IN MINUTI!!!!!!!!!!!!!!!!!!!!!!!!!! GUARDA SOPRA
 SELECT area.name, sum(recording.length) total_length FROM area
 JOIN area_type ON area.type = area_type.id AND area_type.name = 'Country'
 JOIN artist ON artist.area = area.id
@@ -225,27 +239,37 @@ WHERE releases_num >= 10
 --Questo vale solo per le persone, dobbiamo quindi usare 'Person' come artist_type
 
 --Versione 1:
-WITH louis AS 
-( 
-	SELECT MAKE_DATE(end_date_year,end_date_month,end_date_day) AS death
-	FROM artist 
-	WHERE name = 'Louis Armstrong' 
-)
-SELECT artist.name, MAKE_DATE(begin_date_year,begin_date_month,begin_date_day) AS birth, MAKE_DATE(end_date_year,end_date_month,end_date_day) AS death
-FROM artist
-JOIN artist_type ON artist.type = artist_type.id AND artist_type.name = 'Person'
-WHERE MAKE_DATE(end_date_year,end_date_month,end_date_day) > (SELECT * FROM louis)
-ORDER BY death 
-LIMIT 1
+SELECT a.name, MAKE_DATE(a.begin_date_year,a.begin_date_month,a.begin_date_day) AS birth, MAKE_DATE(a.end_date_year,a.end_date_month,a.end_date_day) AS death
+FROM artist a
+JOIN
+(
+	--Trovo la data di morte minore tra le date maggiori di quella di Louis
+	SELECT MIN(MAKE_DATE(end_date_year,end_date_month,end_date_day)) AS death
+	FROM artist
+	JOIN artist_type ON artist.type = artist_type.id AND artist_type.name = 'Person'
+	WHERE MAKE_DATE(end_date_year,end_date_month,end_date_day) > 
+	(
+		--Seleziono la data di morte di Louis
+		SELECT MAKE_DATE(end_date_year,end_date_month,end_date_day) AS death
+		FROM artist 
+		WHERE name = 'Louis Armstrong'	
+	)
+) ar
+ON MAKE_DATE(a.end_date_year,a.end_date_month,a.end_date_day) =  ar.death
 
 --Versione 2:
+
 SELECT a.name, MAKE_DATE(a.begin_date_year,a.begin_date_month,a.begin_date_day) AS birth, MAKE_DATE(a.end_date_year,a.end_date_month,a.end_date_day) AS death
-FROM artist AS a
-JOIN artist_type ON a.type = artist_type.id AND artist_type.name = 'Person'
-JOIN artist AS l ON l.name = 'Louis Armstrong' 
-AND MAKE_DATE(a.end_date_year,a.end_date_month,a.end_date_day) > MAKE_DATE(l.end_date_year,l.end_date_month,l.end_date_day) 
-ORDER BY death
-FETCH FIRST 1 ROW ONLY
+FROM artist a
+JOIN
+(
+	SELECT MIN(MAKE_DATE(min.end_date_year,min.end_date_month,min.end_date_day)) AS death
+	FROM artist AS min
+	JOIN artist_type ON min.type = artist_type.id AND artist_type.name = 'Person'
+	JOIN artist AS l ON l.name = 'Louis Armstrong' 
+	AND MAKE_DATE(min.end_date_year,min.end_date_month,min.end_date_day) > MAKE_DATE(l.end_date_year,l.end_date_month,l.end_date_day) 
+) min_artist 
+ON MAKE_DATE(a.end_date_year,a.end_date_month,a.end_date_day) = min_artist.death
 
 --Query 16:
 --Elencare le coppie di etichette discografiche che non hanno mai fatto uscire una release in comune ma hanno fatto
@@ -260,20 +284,29 @@ FETCH FIRST 1 ROW ONLY
 WITH c_releases AS --Release uscite in più paesi
 (
 	SELECT release --,COUNT(*)
-	from release_country
+	FROM release_country
 	GROUP BY release
 	HAVING COUNT(*)>1
+),
+c_tracks AS --track appartenenti a release uscite in più paesi 
+(
+	SELECT track.id, track.name, track.length
+	FROM track
+	JOIN medium ON track.medium = medium.id
+	JOIN release ON medium.release = release.id
+	JOIN c_releases ON release.id = c_releases.release
 )
-SELECT track.name, track.length
-FROM track
-JOIN medium ON track.medium = medium.id
-JOIN release ON medium.release = release.id
-JOIN c_releases ON release.id = c_releases.release
-ORDER BY track.length DESC
-LIMIT 1
+SELECT c_tracks.name, c_tracks.length 
+FROM c_tracks
+WHERE c_tracks.id NOT IN --Negazione essenziale: escludiamo tutte le tuple minori di qualcun'altra
+(
+	SELECT c1.id
+	FROM c_tracks c1
+	JOIN c_tracks c2 ON c1.length < c2.length
+)
 
 --Versione 2:
-SELECT track.name, track.length
+SELECT DISTINCT track.name, track.length
 FROM track
 JOIN
 (
@@ -291,5 +324,3 @@ JOIN
 	ON release.id = c_releases.release
 ) max_track
 ON track.length = max_track.max_length
-FETCH FIRST 1 ROW ONLY
- 
