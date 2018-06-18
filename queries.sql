@@ -60,8 +60,7 @@ JOIN artist_credit ON release_group.artist_credit = artist_credit.id
 JOIN artist_credit_name ON artist_credit.id = artist_credit_name.artist_credit
 JOIN artist ON artist.id = artist_credit_name.artist AND artist.ended = FALSE
 JOIN artist_type ON artist.type = artist_type.id AND artist_type.name = 'Group'
-JOIN area ON artist.area = area.id AND area.name = 'United Kingdom' --TODO siamo sicuri che vada bene uk?
---NOTA:GUARDA LA QUERY 13. PENSO CHE VADA BENE UNITED KINGDOM
+JOIN area ON artist.area = area.id AND area.name = 'United Kingdom' 
 ORDER BY artist.name, release_group.name
 
 --Query 7:
@@ -80,12 +79,14 @@ WHERE artist.name <> artist_credit.name
 --Trovare gli artisti con meno di tre release (il risultato deve contenere il nome dell’artista ed il numero di
 --release).
 
-SELECT artist.name, count(release.id) total_releases FROM release
-JOIN artist_credit ON release.artist_credit = artist_credit.id
-JOIN artist_credit_name ON artist_credit.id = artist_credit_name.artist_credit
-JOIN artist ON artist.id = artist_credit_name.artist
+--Uso la right join per contare anche chi ha zero release
+
+SELECT artist.name, count(release.id) total_releases FROM release 
+RIGHT JOIN artist_credit ON release.artist_credit = artist_credit.id
+RIGHT JOIN artist_credit_name ON artist_credit.id = artist_credit_name.artist_credit
+RIGHT JOIN artist ON artist.id = artist_credit_name.artist
 GROUP BY artist.id
-HAVING count(release.id) < 3
+HAVING count(release.id) < 3 
 
 --Query 9:
 --Trovare la registrazione più lunga di un’artista donna (il risultato deve contenere il nome della registrazione, la
@@ -129,6 +130,7 @@ AND female_rec.length IS NOT NULL
 --Elencare le lingue cui non corrisponde nessuna release (il risultato deve contenere il nome della lingua, il numero
 --di release in quella lingua, cioè 0, e essere ordinato per lingua) (scrivere due versioni della query).
 
+--Versione 1
 SELECT *, 0 AS num_releases FROM
 (
 	SELECT language.name FROM language
@@ -137,7 +139,12 @@ SELECT *, 0 AS num_releases FROM
 	JOIN release ON release.language = language.id
 ) AS result
 ORDER BY result.name
---TODO FARE VERSIONE 2 CON LEFT O RIGHT JOIN
+
+--Versione 2
+SELECT language.name, 0 AS num_releases FROM language
+LEFT JOIN release ON language.id = release.language
+WHERE release.language IS NULL
+ORDER BY language.name
 
 --Query 11:
 --Ricavare la seconda registrazione per lunghezza di un artista uomo (il risultato deve comprendere l'artista
@@ -183,17 +190,15 @@ WHERE 1 =
 --Per ogni stato esistente riportare la lunghezza totale delle registrazioni di artisti di quello stato (il risultato deve
 --comprendere il nome dello stato e la lunghezza totale in minuti delle registrazioni (0 se lo stato non ha
 --registrazioni) (scrivere due versioni della query).
---TODO DEVONO ESSERE IN MINUTI!!!!!!!!!!!!!!!!!!!!!!!!!! GUARDA SOPRA
-SELECT area.name, sum(recording.length) total_length FROM area
+
+--Versione 1 
+SELECT area.name, COALESCE(sum(recording.length)/60000, 0) recording_length FROM area
 JOIN area_type ON area.type = area_type.id AND area_type.name = 'Country'
 JOIN artist ON artist.area = area.id
-JOIN artist_credit_name ON artist_credit_name.artist = artist.id
+JOIN artist_credit_name ON artist_credit_name.artist = artist.id --TODO length/60000 + length%60/100
 JOIN artist_credit ON artist_credit.id = artist_credit_name.artist_credit
-JOIN recording ON artist_credit.id = recording.artist_credit --nemmeno facendo LEFT JOIN qui stampa gli zeri!
+JOIN recording ON artist_credit.id = recording.artist_credit 
 GROUP BY area.id
-
---Test left join (funziona ma comunque niente zeri)
-SELECT artist_credit.name, sum(length) FROM artist_credit LEFT JOIN recording ON artist_credit.id = recording.artist_credit GROUP BY artist_credit.id
 
 --TODO SECONDA VERSIONE usa coalesce
 
@@ -231,6 +236,42 @@ WHERE releases_num >= 10
 --Considerando il numero medio di tracce tra le release pubblicate su CD, ricavare gli artisti che hanno pubblicato
 --esclusivamente release con più tracce della media (il risultato deve contenere il nome dell’artista e il numero di
 --release ed essere ordinato per numero di release discendente) (scrivere due versioni della query).
+
+--Versione 1
+WITH average AS(
+	SELECT avg(medium.track_count) FROM medium
+	JOIN medium_format ON medium.format = medium_format.id AND medium_format.name = 'CD'
+),
+
+not_all AS( --Artisti che NON hanno rilasciato ESCLUSIVAMENTE release su cd con più tracce della media 
+	SELECT artist_credit.id FROM medium  --Artisti che hanno rilasciato release su cd 
+	JOIN medium_format ON medium.format = medium_format.id AND medium_format.name = 'CD'
+	JOIN release ON medium.release = release.id
+	JOIN artist_credit ON artist_credit.id = release.artist_credit
+
+	EXCEPT
+
+	SELECT artist_credit.id FROM medium  --Artisti che hanno rilasciato release su cd con più tracce della media 
+	JOIN medium_format ON medium.format = medium_format.id AND medium_format.name = 'CD' AND medium.track_count > (SELECT * FROM average)
+	JOIN release ON medium.release = release.id
+	JOIN artist_credit ON artist_credit.id = release.artist_credit
+),
+
+final_artists AS(
+	SELECT artist_credit.id FROM artist_credit --Tutti gli artisti
+
+	EXCEPT
+
+	SELECT * FROM not_all --Artisti che NON hanno rilasciato ESCLUSIVAMENTE release su cd con più tracce della media 
+)
+
+SELECT artist_credit.name, count(release.id) release_count FROM release
+JOIN artist_credit ON artist_credit.id = release.artist_credit
+JOIN final_artists ON final_artists.id = artist_credit.id
+GROUP BY artist_credit.name
+ORDER BY release_count DESC
+
+--Versione 2
 
 --Query 15:
 --Ricavare il primo artista morto dopo Louis Armstrong (il risultato deve contenere il nome dell’artista, la sua data
