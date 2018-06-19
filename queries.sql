@@ -339,15 +339,17 @@ WITH no_common_release AS(
 	JOIN release_label r_label1 ON r_label1.label = l1.id
 	JOIN release_label r_label2 ON r_label2.label = l2.id
 	WHERE r_label1.release = r_label2.release
-)
+),
 
-SELECT * FROM no_common_release JOIN (
+collaborations AS(
 	SELECT DISTINCT l1.id collab1id, l2.id collab2id FROM label l1 --Coppie di label che hanno rilasciato release in comune, ovvero che hanno collaborato
 	JOIN label l2 ON l1.id <> L2.id
 	JOIN release_label r_label1 ON r_label1.label = l1.id
 	JOIN release_label r_label2 ON r_label2.label = l2.id
 	WHERE r_label1.release = r_label2.release
-) AS collaborations
+) 
+
+SELECT * FROM no_common_release JOIN collaborations
 ON no_common_release.label1id = collaborations.collab1id OR no_common_release.label2id = collaborations.collab1id
    OR no_common_release.label1id = collaborations.collab2id OR no_common_release.label2id = collaborations.collab2id
 
