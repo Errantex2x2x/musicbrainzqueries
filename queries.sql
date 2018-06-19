@@ -55,7 +55,7 @@ WHERE artist.name = 'Prince'
 --Elencare le release di gruppi inglesi ancora in attività (il risultato deve contenere il nome del gruppo e il nome
 --della release e essere ordinato per nome del gruppo e nome della release)
 
-SELECT artist.name, release_group.name FROM release_group 
+SELECT artist.name AS artist, release_group.name AS release FROM release_group 
 JOIN artist_credit ON release_group.artist_credit = artist_credit.id
 JOIN artist_credit_name ON artist_credit.id = artist_credit_name.artist_credit
 JOIN artist ON artist.id = artist_credit_name.artist AND artist.ended = FALSE
@@ -191,16 +191,26 @@ WHERE 1 =
 --comprendere il nome dello stato e la lunghezza totale in minuti delle registrazioni (0 se lo stato non ha
 --registrazioni) (scrivere due versioni della query).
 
---Versione 1 
-SELECT area.name, COALESCE(sum(recording.length)/60000, 0) recording_length FROM area
+--Versione 1  
+SELECT area.name, COALESCE(sum(recording.length)/60000, 0) recording_length FROM area --length/60000 + length%60/100 non cambia nulla nell'output
 JOIN area_type ON area.type = area_type.id AND area_type.name = 'Country'
 JOIN artist ON artist.area = area.id
-JOIN artist_credit_name ON artist_credit_name.artist = artist.id --TODO length/60000 + length%60/100
+JOIN artist_credit_name ON artist_credit_name.artist = artist.id 
 JOIN artist_credit ON artist_credit.id = artist_credit_name.artist_credit
 JOIN recording ON artist_credit.id = recording.artist_credit 
 GROUP BY area.id
 
---TODO SECONDA VERSIONE usa coalesce
+--Versione 2
+SELECT sub.name, sum(sub.recording_length)/60000 recording_length FROM
+(
+	SELECT area.name, COALESCE(recording.length, 0) recording_length FROM area 
+	JOIN area_type ON area.type = area_type.id AND area_type.name = 'Country'
+	JOIN artist ON artist.area = area.id
+	JOIN artist_credit_name ON artist_credit_name.artist = artist.id 
+	JOIN artist_credit ON artist_credit.id = artist_credit_name.artist_credit
+	LEFT JOIN recording ON artist_credit.id = recording.artist_credit 
+) AS sub
+GROUP BY sub.name
 
 --Query 13:
 --Ricavare gli artisti britannici che hanno pubblicato almeno 10 release (il risultato deve contenere il nome
@@ -271,7 +281,7 @@ JOIN final_artists ON final_artists.id = artist_credit.id
 GROUP BY artist_credit.name
 ORDER BY release_count DESC
 
---Versione 2
+--Versione 2 --TODO
 
 --Query 15:
 --Ricavare il primo artista morto dopo Louis Armstrong (il risultato deve contenere il nome dell’artista, la sua data
@@ -317,6 +327,46 @@ ON MAKE_DATE(a.end_date_year,a.end_date_month,a.end_date_day) = min_artist.death
 --Elencare le coppie di etichette discografiche che non hanno mai fatto uscire una release in comune ma hanno fatto
 --uscire una release in collaborazione con una medesima terza etichetta (il risultato deve comprendere i nomi delle
 --coppie di etichette discografiche) (scrivere due versioni della query).
+
+--Versione 1: --FIXME MANCA SOLO LA CONDIZIONE FINALE
+WITH no_common_release AS(
+	SELECT l1.id label1id, l1.name label1, l2.id label2id, l2.name label2 FROM label l1 JOIN label l2 ON l1.id <> L2.id --Ogni coppia di label
+
+	EXCEPT
+
+	SELECT DISTINCT l1.id, l1.name, l2.id, l2.name FROM label l1 --Coppie di label che hanno rilasciato release in comune, ovvero che hanno collaborato
+	JOIN label l2 ON l1.id <> L2.id
+	JOIN release_label r_label1 ON r_label1.label = l1.id
+	JOIN release_label r_label2 ON r_label2.label = l2.id
+	WHERE r_label1.release = r_label2.release
+)
+
+SELECT * FROM no_common_release JOIN (
+	SELECT DISTINCT l1.id collab1id, l2.id collab2id FROM label l1 --Coppie di label che hanno rilasciato release in comune, ovvero che hanno collaborato
+	JOIN label l2 ON l1.id <> L2.id
+	JOIN release_label r_label1 ON r_label1.label = l1.id
+	JOIN release_label r_label2 ON r_label2.label = l2.id
+	WHERE r_label1.release = r_label2.release
+) AS collaborations
+ON no_common_release.label1id = collaborations.collab1id OR no_common_release.label2id = collaborations.collab1id
+   OR no_common_release.label1id = collaborations.collab2id OR no_common_release.label2id = collaborations.collab2id
+
+
+--Verisone 2:  --SOLO UNA BOZZA, NON TERMINA
+WITH no_common_release AS(
+	SELECT l1.id label1id, l1.name label1, l2.id label2id, l2.name label2 FROM label l1 JOIN label l2 ON l1.id <> L2.id --Ogni coppia di label
+
+	EXCEPT
+
+	SELECT DISTINCT l1.id, l1.name, l2.id, l2.name FROM label l1 --Coppie di label che hanno rilasciato release in comune, ovvero che hanno collaborato
+	JOIN label l2 ON l1.id <> L2.id
+	JOIN release_label r_label1 ON r_label1.label = l1.id
+	JOIN release_label r_label2 ON r_label2.label = l2.id
+	WHERE r_label1.release = r_label2.release
+)
+
+SELECT * FROM no_common_release JOIN
+label ON label.id <> no_common_release.label1id AND label.id <> no_common_release.label2id 
 
 --Query 17 (facoltativa):
 --Trovare il nome e la lunghezza della traccia più lunga appartenente a una release rilasciata in almeno due paesi (il
