@@ -1,8 +1,4 @@
-﻿--Pari: io
---Dispari: tu
---OCCHIO: se vuoi elencare release senza ripetizioni usa release_group piuttosto che release con la distinct
-
---Query 1:
+﻿--Query 1:
 --Contare il numero di lingue in cui le release contenute nel database sono scritte (il risultato deve contenere
 --soltanto il numero delle lingue, rinominato “Numero_Lingue”).
 
@@ -248,40 +244,76 @@ WHERE releases_num >= 10
 --release ed essere ordinato per numero di release discendente) (scrivere due versioni della query).
 
 --Versione 1
-WITH average AS(
+WITH average AS( --Numero medio di tracce tra le release pubblicate su cd
 	SELECT avg(medium.track_count) FROM medium
 	JOIN medium_format ON medium.format = medium_format.id AND medium_format.name = 'CD'
 ),
 
 not_all AS( --Artisti che NON hanno rilasciato ESCLUSIVAMENTE release su cd con più tracce della media 
-	SELECT artist_credit.id FROM medium  --Artisti che hanno rilasciato release su cd 
+	SELECT artist_credit.id 
+	FROM medium  --Artisti che hanno rilasciato release su cd 
 	JOIN medium_format ON medium.format = medium_format.id AND medium_format.name = 'CD'
 	JOIN release ON medium.release = release.id
 	JOIN artist_credit ON artist_credit.id = release.artist_credit
 
 	EXCEPT
 
-	SELECT artist_credit.id FROM medium  --Artisti che hanno rilasciato release su cd con più tracce della media 
+	SELECT artist_credit.id 
+	FROM medium  --Artisti che hanno rilasciato release su cd con più tracce della media 
 	JOIN medium_format ON medium.format = medium_format.id AND medium_format.name = 'CD' AND medium.track_count > (SELECT * FROM average)
 	JOIN release ON medium.release = release.id
 	JOIN artist_credit ON artist_credit.id = release.artist_credit
 ),
 
-final_artists AS(
-	SELECT artist_credit.id FROM artist_credit --Tutti gli artisti
+final_artists AS( --Lista di artisti che rispettano le condizioni richieste
+	SELECT artist_credit.id 
+	FROM artist_credit --Tutti gli artisti
 
 	EXCEPT
 
 	SELECT * FROM not_all --Artisti che NON hanno rilasciato ESCLUSIVAMENTE release su cd con più tracce della media 
 )
 
-SELECT artist_credit.name, count(release.id) release_count FROM release
+SELECT artist_credit.name, count(release.id) release_count 
+FROM release
 JOIN artist_credit ON artist_credit.id = release.artist_credit
 JOIN final_artists ON final_artists.id = artist_credit.id
 GROUP BY artist_credit.name
 ORDER BY release_count DESC
 
---Versione 2 --TODO
+
+--Versione 2 
+WITH average AS( 
+	SELECT avg(medium.track_count) FROM medium
+	JOIN medium_format ON medium.format = medium_format.id AND medium_format.name = 'CD'
+)
+
+SELECT artist_credit.name, count(release.id) release_count 
+FROM release
+JOIN artist_credit ON artist_credit.id = release.artist_credit
+WHERE artist_credit.id IN
+(
+	SELECT artist_credit.id 
+	FROM artist_credit 
+	WHERE artist_credit NOT IN
+	(
+		SELECT artist_credit.id 
+		FROM medium  --Artisti che hanno rilasciato release su cd 
+		JOIN medium_format ON medium.format = medium_format.id AND medium_format.name = 'CD'
+		JOIN release ON medium.release = release.id
+		JOIN artist_credit ON artist_credit.id = release.artist_credit
+		WHERE artist_credit NOT IN
+		(
+			SELECT artist_credit.id 
+			FROM medium  --Artisti che hanno rilasciato release su cd con più tracce della media 
+			JOIN medium_format ON medium.format = medium_format.id AND medium_format.name = 'CD' AND medium.track_count > (SELECT * FROM average)
+			JOIN release ON medium.release = release.id
+			JOIN artist_credit ON artist_credit.id = release.artist_credit
+		)
+	)
+)
+GROUP BY artist_credit.name
+ORDER BY release_count DESC
 
 --Query 15:
 --Ricavare il primo artista morto dopo Louis Armstrong (il risultato deve contenere il nome dell’artista, la sua data
@@ -328,7 +360,7 @@ ON MAKE_DATE(a.end_date_year,a.end_date_month,a.end_date_day) = min_artist.death
 --uscire una release in collaborazione con una medesima terza etichetta (il risultato deve comprendere i nomi delle
 --coppie di etichette discografiche) (scrivere due versioni della query).
 
---Versione 1: --FIXME MANCA SOLO LA CONDIZIONE FINALE
+--Versione 1: 
 WITH no_common_release AS(
 	SELECT l1.id label1id, l1.name label1, l2.id label2id, l2.name label2 
 	FROM label l1 
@@ -351,12 +383,33 @@ collaborations AS(
 	WHERE r_label1.release = r_label2.release
 ) 
 
-SELECT * FROM no_common_release JOIN collaborations
-ON no_common_release.label1id = collaborations.collab1id OR no_common_release.label2id = collaborations.collab1id
-   OR no_common_release.label1id = collaborations.collab2id OR no_common_release.label2id = collaborations.collab2id
+SELECT label1, label2 FROM no_common_release 
+WHERE EXISTS
+(--l3 terza etichetta
+	SELECT l3.id 
+	FROM label l3
+	WHERE EXISTS
+	(--collaborazione fra l1 ed l3
+		SELECT c.collab1id 
+		FROM collaborations c
+		WHERE (c.collab1id = l3.id AND c.collab2id = no_common_release.label1id)
+			OR 
+			(c.collab1id = no_common_release.label1id AND c.collab2id = l3.id)
+	)
+	AND EXISTS
+	(--collaborazione fra l2 ed l3
+		SELECT c.collab1id 
+		FROM collaborations c
+		WHERE (c.collab1id = l3.id AND c.collab2id = no_common_release.label2id)
+			OR 
+			(c.collab1id = no_common_release.label2id AND c.collab2id = l3.id)
+	)
+)
+--ORDER BY no_common_release.label1id DESC --Utile per confrontare il risultato con la versione 2
 
---Versione Errante
-SELECT l1.id label1id, l1.name label1, l2.id label2id, l2.name label2 
+
+--Versione 2
+SELECT l1.name label1, l2.name label2 
 FROM label l1 
 JOIN label l2 ON l1.id <> L2.id --Ogni coppia di label
 WHERE NOT EXISTS
@@ -385,23 +438,8 @@ AND EXISTS
 		WHERE rl1.label = lt.id
 	)
 )
--- LIMIT 10 --Scommenta se vuoi vedere il risultato velocemente
+--ORDER BY l1.id DESC --Utile per confrontare il risultato con la versione 1
 
---Versione 2:  --SOLO UNA BOZZA, NON TERMINA
-WITH no_common_release AS(
-	SELECT l1.id label1id, l1.name label1, l2.id label2id, l2.name label2 FROM label l1 JOIN label l2 ON l1.id <> L2.id --Ogni coppia di label
-
-	EXCEPT
-
-	SELECT DISTINCT l1.id, l1.name, l2.id, l2.name FROM label l1 --Coppie di label che hanno rilasciato release in comune, ovvero che hanno collaborato
-	JOIN label l2 ON l1.id <> L2.id
-	JOIN release_label r_label1 ON r_label1.label = l1.id
-	JOIN release_label r_label2 ON r_label2.label = l2.id
-	WHERE r_label1.release = r_label2.release
-)
-
-SELECT * FROM no_common_release JOIN
-label ON label.id <> no_common_release.label1id AND label.id <> no_common_release.label2id 
 
 --Query 17 (facoltativa):
 --Trovare il nome e la lunghezza della traccia più lunga appartenente a una release rilasciata in almeno due paesi (il
