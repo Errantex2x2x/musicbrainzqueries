@@ -330,7 +330,9 @@ ON MAKE_DATE(a.end_date_year,a.end_date_month,a.end_date_day) = min_artist.death
 
 --Versione 1: --FIXME MANCA SOLO LA CONDIZIONE FINALE
 WITH no_common_release AS(
-	SELECT l1.id label1id, l1.name label1, l2.id label2id, l2.name label2 FROM label l1 JOIN label l2 ON l1.id <> L2.id --Ogni coppia di label
+	SELECT l1.id label1id, l1.name label1, l2.id label2id, l2.name label2 
+	FROM label l1 
+	JOIN label l2 ON l1.id <> L2.id --Ogni coppia di label
 
 	EXCEPT
 
@@ -353,8 +355,39 @@ SELECT * FROM no_common_release JOIN collaborations
 ON no_common_release.label1id = collaborations.collab1id OR no_common_release.label2id = collaborations.collab1id
    OR no_common_release.label1id = collaborations.collab2id OR no_common_release.label2id = collaborations.collab2id
 
+--Versione Errante
+SELECT l1.id label1id, l1.name label1, l2.id label2id, l2.name label2 
+FROM label l1 
+JOIN label l2 ON l1.id <> L2.id --Ogni coppia di label
+WHERE NOT EXISTS
+(--Release in comune
+	SELECT rl1.id
+	FROM release_label rl1 
+	JOIN release_label rl2 ON rl2.label = l2.id AND rl1.release = rl2.release
+	WHERE rl1.label = l1.id
+)
+AND EXISTS
+(--collaborazione con terza etichetta
+	SELECT lt.id
+	FROM label lt
+	WHERE EXISTS
+	(--Release in comune con lt e l1
+		SELECT rl1.id
+		FROM release_label rl1 
+		JOIN release_label rl2 ON rl2.label = l1.id AND rl1.release = rl2.release
+		WHERE rl1.label = lt.id
+	)
+	AND EXISTS
+	(--Release in comune con lt e l2
+		SELECT rl1.id
+		FROM release_label rl1 
+		JOIN release_label rl2 ON rl2.label = l2.id AND rl1.release = rl2.release
+		WHERE rl1.label = lt.id
+	)
+)
+-- LIMIT 10 --Scommenta se vuoi vedere il risultato velocemente
 
---Verisone 2:  --SOLO UNA BOZZA, NON TERMINA
+--Versione 2:  --SOLO UNA BOZZA, NON TERMINA
 WITH no_common_release AS(
 	SELECT l1.id label1id, l1.name label1, l2.id label2id, l2.name label2 FROM label l1 JOIN label l2 ON l1.id <> L2.id --Ogni coppia di label
 
