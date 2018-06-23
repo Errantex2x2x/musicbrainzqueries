@@ -1,3 +1,8 @@
+﻿--COMPONENTI DEL GRUPPO
+--Marco Maida
+--Marco Perronet
+
+--set search_path = "$user", public, musicbrainz;
 ﻿--Query 1:
 --Contare il numero di lingue in cui le release contenute nel database sono scritte (il risultato deve contenere
 --soltanto il numero delle lingue, rinominato “Numero_Lingue”).
@@ -13,7 +18,7 @@ SELECT DISTINCT artist_credit.name AS artist_name, language.name AS language
 FROM track
 JOIN medium ON track.medium = medium.id
 JOIN release ON medium.release = release.id
-JOIN language ON release.language = language.id AND language.name = 'Italian' --TO TEST ON FULL DB, HERE THERE ARE NO ITA SONGS
+JOIN language ON release.language = language.id AND language.name = 'Italian' 
 JOIN artist_credit ON track.artist_credit = artist_credit.id
 
 --Query 3:
@@ -21,7 +26,7 @@ JOIN artist_credit ON track.artist_credit = artist_credit.id
 
 SELECT release.name
 FROM release
-JOIN language ON release.language = language.id AND language.iso_code_1 IS NULL --RIVEDERE
+JOIN language ON release.language = language.id AND language.iso_code_1 IS NULL --RIVEDERE TODO 
 
 --Query 4:
 --Elencare gli artisti il cui nome contiene tutte le vocali ed è composto da una sola parola (il risultato deve
@@ -64,7 +69,7 @@ ORDER BY artist.name, release_group.name
 --contenere il nome della release, il nome dell’artista accreditato (cioè artist_credit.name) e il nome dell’artista
 --(cioè artist.name))
 
-SELECT release.name, artist_credit.name, artist.name 
+SELECT release.name nome_release, artist_credit.name artista_accreditato, artist.name artista
 FROM release 
 JOIN artist_credit ON release.artist_credit = artist_credit.id
 JOIN artist_credit_name ON artist_credit.id = artist_credit_name.artist_credit
@@ -91,7 +96,7 @@ HAVING count(release.id) < 3
 --07/05/18
 
 --Versione 1:
-WITH female_rec AS 
+WITH female_rec AS --TODO SIAMO SICURI CHE LA MISURA IN MINUTI SIA GIUSTA? viene una registrazione moooolto lunga
 (
 	SELECT recording.name AS recording_name, length, artist.name AS artist_name
 	FROM recording
@@ -99,12 +104,12 @@ WITH female_rec AS
 	JOIN artist ON artist.id = artist_credit_name.artist
 	JOIN gender ON gender.id = artist.gender AND gender.name = 'Female'
 )
-SELECT recording_name, length/60000 + length%60/100. AS length, artist_name
+SELECT DISTINCT recording_name, length/60000 + length%60/100. AS length, artist_name
 FROM female_rec
 WHERE length = ( SELECT MAX(length) AS max_length FROM female_rec )--Potrebbe ritornare più di un valore, in caso di pari lunghezza
 
---Versione 2:
-WITH female_rec AS 
+--Versione 2: --TODO SUL DB ORIGINALE NON TERMINA
+WITH female_rec AS --TODO SIAMO SICURI CHE LA MISURA IN MINUTI SIA GIUSTA? 
 (
 	SELECT recording.id, recording.name AS recording_name, length, artist.name AS artist_name
 	FROM recording
@@ -126,7 +131,7 @@ AND female_rec.length IS NOT NULL
 --Elencare le lingue cui non corrisponde nessuna release (il risultato deve contenere il nome della lingua, il numero
 --di release in quella lingua, cioè 0, e essere ordinato per lingua) (scrivere due versioni della query).
 
---Versione 1
+--Versione 1 
 SELECT *, 0 AS num_releases FROM
 (
 	SELECT language.name FROM language
@@ -136,7 +141,7 @@ SELECT *, 0 AS num_releases FROM
 ) AS result
 ORDER BY result.name
 
---Versione 2
+--Versione 2   
 SELECT language.name, 0 AS num_releases FROM language
 LEFT JOIN release ON language.id = release.language
 WHERE release.language IS NULL
@@ -146,7 +151,7 @@ ORDER BY language.name
 --Ricavare la seconda registrazione per lunghezza di un artista uomo (il risultato deve comprendere l'artista
 --accreditato, il nome della registrazione e la sua lunghezza) (scrivere due versioni della query).
 
---Versione 1:
+--Versione 1: --TODO SUL DB ORIGINALE NON TERMINA (termina con un errore di "memoria")
 --definita male_rec come tabella contenente le registrazioni degli artisti uomini,
 --prendiamo la registrazione più lunga tra tutte le registrazioni minori della più lunga in assoluto.
 WITH male_rec AS 
@@ -162,7 +167,7 @@ SELECT DISTINCT *
 FROM male_rec
 WHERE length = (SELECT MAX(length) FROM male_rec WHERE length < (SELECT MAX(length) FROM male_rec))
 
---Versione 2:
+--Versione 2: --TODO SUL DB ORIGINALE NON TERMINA
 --Utilizzo il passaggio di binding per verificare che esista solamente un altro recording con lunghezza maggiore
 WITH male_rec AS 
 (
@@ -189,7 +194,7 @@ WHERE 1 =
 
 --Versione 1  
 SELECT area.name, COALESCE(sum(recording.length)/60000, 0) recording_length FROM area --length/60000 + length%60/100 non cambia nulla nell'output
-JOIN area_type ON area.type = area_type.id AND area_type.name = 'Country'
+JOIN area_type ON area.type = area_type.id AND area_type.name = 'Country'	      --TODO SIAMO SICURI CHE LA MISURA IN MINUTI SIA GIUSTA? 
 JOIN artist ON artist.area = area.id
 JOIN artist_credit_name ON artist_credit_name.artist = artist.id 
 JOIN artist_credit ON artist_credit.id = artist_credit_name.artist_credit
@@ -197,7 +202,7 @@ JOIN recording ON artist_credit.id = recording.artist_credit
 GROUP BY area.id
 
 --Versione 2
-SELECT sub.name, sum(sub.recording_length)/60000 recording_length FROM
+SELECT sub.name, sum(sub.recording_length)/60000 recording_length FROM --TODO SIAMO SICURI CHE LA MISURA IN MINUTI SIA GIUSTA? 
 (
 	SELECT area.name, COALESCE(recording.length, 0) recording_length FROM area 
 	JOIN area_type ON area.type = area_type.id AND area_type.name = 'Country'
@@ -223,7 +228,7 @@ GROUP BY artist.id, artist.name, area.name
 HAVING COUNT(release.name) >= 10
 
 --Versione 2:
-SELECT artist.name, 'United Kingdom', uk_rel.*
+SELECT artist.name, 'United Kingdom' AS country, uk_rel.*
 FROM artist
 JOIN
 (
@@ -282,7 +287,7 @@ GROUP BY artist_credit.name
 ORDER BY release_count DESC
 
 
---Versione 2 
+--Versione 2 --TODO SUL DB ORIGINALE NON TERMINA
 WITH average AS( 
 	SELECT avg(medium.track_count) FROM medium
 	JOIN medium_format ON medium.format = medium_format.id AND medium_format.name = 'CD'
@@ -360,7 +365,7 @@ ON MAKE_DATE(a.end_date_year,a.end_date_month,a.end_date_day) = min_artist.death
 --uscire una release in collaborazione con una medesima terza etichetta (il risultato deve comprendere i nomi delle
 --coppie di etichette discografiche) (scrivere due versioni della query).
 
---Versione 1: 
+--Versione 1: --TODO SUL DB ORIGINALE NON TERMINA (termina con un errore di "memoria")
 WITH no_common_release AS(
 	SELECT l1.id label1id, l1.name label1, l2.id label2id, l2.name label2 
 	FROM label l1 
@@ -408,7 +413,7 @@ WHERE EXISTS
 --ORDER BY no_common_release.label1id DESC --Utile per confrontare il risultato con la versione 2
 
 
---Versione 2
+--Versione 2 --TODO SUL DB ORIGINALE NON TERMINA 
 SELECT l1.name label1, l2.name label2 
 FROM label l1 
 JOIN label l2 ON l1.id <> L2.id --Ogni coppia di label
@@ -445,7 +450,7 @@ AND EXISTS
 --Trovare il nome e la lunghezza della traccia più lunga appartenente a una release rilasciata in almeno due paesi (il
 --risultato deve contenere il nome della traccia e la sua lunghezza in secondi) (scrivere due versioni della query).
 
---Versione 1:
+--Versione 1: --TODO SUL DB ORIGINALE NON TERMINA (Errore di memoria) --TODO Unità di misura sbagliata?
 WITH c_releases AS --Release uscite in più paesi
 (
 	SELECT release --,COUNT(*)
@@ -470,7 +475,7 @@ WHERE c_tracks.id NOT IN --Negazione essenziale: escludiamo tutte le tuple minor
 	JOIN c_tracks c2 ON c1.length < c2.length
 )
 
---Versione 2:
+--Versione 2: --TODO Unità di misura sbagliata?
 SELECT DISTINCT track.name, track.length
 FROM track
 JOIN
