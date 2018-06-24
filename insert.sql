@@ -1,6 +1,4 @@
-﻿begin;
-
---Categoria Sito
+﻿--Categoria Sito
 INSERT INTO categoriasito VALUES('Primo Piano', '');
 INSERT INTO categoriasito VALUES('Nuovo', '');
 INSERT INTO categoriasito VALUES('In Salita', '');
@@ -127,5 +125,3 @@ INSERT INTO paragrafo VALUES(10,
 INSERT INTO paragrafo VALUES(11, 
 'Ut tristique imperdiet tortor vitae suscipit. Proin suscipit malesuada tortor in elementum. Etiam varius lorem et arcu viverra molestie. Quisque volutpat nulla vel congue suscipit. Duis cursus feugiat felis, bibendum volutpat nisl pretium id. Aliquam vestibulum mollis neque non iaculis. Nunc sodales vel nisl at finibus. Maecenas neque augue, vehicula eget libero ac, auctor lobortis risus. Ut laoreet diam nunc, vitae ultricies nisi ultrices at. Sed sit amet varius dui. Ut eget efficitur nisl. Nam bibendum eget sapien a tempor. Quisque sed turpis condimentum, auctor metus sed, tincidunt est. Ut nisl lacus, condimentum sit amet neque vitae, luctus commodo enim. '
 );
-
-commit;
