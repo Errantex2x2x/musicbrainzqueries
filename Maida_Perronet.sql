@@ -3,13 +3,27 @@
 --Marco Perronet
 
 --set search_path = "$user", public, musicbrainz;
-﻿--Query 1:
+
+------------------------------------------------------------------------------------------------------------------------
+﻿
+--Query 1:
 --Contare il numero di lingue in cui le release contenute nel database sono scritte (il risultato deve contenere
 --soltanto il numero delle lingue, rinominato “Numero_Lingue”).
 
 SELECT COUNT(DISTINCT language) Numero_Lingue
 FROM release
 
+--************
+--Consideriamo tutte le tuple della tabella "release": Per risolvere la query basterà contare
+--tutte le distinte lingue. Eventuali valori nulli non vengono considerati nel conteggio.
+--Per verificare la correttezza,possiamo notare come eseguendo la seguente query:
+SELECT DISTINCT language
+FROM release
+--appaiano esattamente lo stesso numero di tuple del count +1 (alcune release non hanno lingua)
+
+
+------------------------------------------------------------------------------------------------------------------------
+﻿
 --Query 2:
 --Elencare gli artisti che hanno cantato canzoni in italiano (il risultato deve contenere il nome dell’artista e il nome
 --della lingua).
@@ -21,12 +35,42 @@ JOIN release ON medium.release = release.id
 JOIN language ON release.language = language.id AND language.name = 'Italian' 
 JOIN artist_credit ON track.artist_credit = artist_credit.id
 
+--************
+--Per risolvere questa query, dobbiamo partire dalla tabella track e ripercorrere
+--la base di dati fino a ricollegarci all'informazione sulla lingua.
+--Passiamo quindi da medium e release
+--Partendo dalla lista delle canzoni in italiano:
+WITH italian_tracks AS 
+(
+	SELECT track.artist_credit AS artist
+	FROM track
+	JOIN medium ON track.medium = medium.id
+	JOIN release ON medium.release = release.id
+	JOIN language ON release.language = language.id AND language.name = 'Italian'
+)
+-- ricaviamo gli autori associati e li stampiamo
+SELECT *
+FROM italian_tracks
+JOIN artist_credit ON italian_tracks.artist = artist_credit.id
+--Possiamo verificare il risultato includendo nella proiezione finale il nome della traccia
+--e i dati su medium e release.
+
+------------------------------------------------------------------------------------------------------------------------
+﻿
 --Query 3:
 --Elencare le release di cui non si conosce la lingua (il risultato deve contenere soltanto il nome della release).
 
 SELECT release.name
 FROM release
-JOIN language ON release.language = language.id AND language.iso_code_1 IS NULL --RIVEDERE TODO 
+WHERE language IS NULL
+
+--************
+--Dobbiamo semplicemente selezionare tra le release quelle che hanno l'attributo "language"
+--valido. Dato che esiste un vincolo di integrità referenziale, se "language" non è nullo
+--deve esistere una corrispettiva lingua. Abbiamo quindi finito
+
+
+------------------------------------------------------------------------------------------------------------------------
 
 --Query 4:
 --Elencare gli artisti il cui nome contiene tutte le vocali ed è composto da una sola parola (il risultato deve
@@ -41,6 +85,16 @@ WHERE 	    (artist.name LIKE '%A%' OR artist.name LIKE '%a%')
 	AND (artist.name LIKE '%U%' OR artist.name LIKE '%u%')
 	AND  artist.name NOT LIKE '% %'
 
+--************
+--Questa query si risolve senza alcun join: tutta la difficoltà sta nella manipolazione delle stringhe
+--Con il primo set di where ci assicuriamo che il nome contenga almeno una volta tutte le vocali.
+--L'ultima condizione assicura la presenza di una sola parola.
+--Eventuali valori nulli vengono esclusi automaticamente.
+--Possiamo convincerci della correttezza della query osservando i risultati o costruendo una 
+--versione più pesante ma più esplicita basata sulle intersezioni
+
+------------------------------------------------------------------------------------------------------------------------
+
 --Query 5:
 --Elencare tutti gli pseudonimi di Prince con il loro tipo, se disponibile (il risultato deve contenere lo pseudonimo
 --dell'artista, il nome dell’artista (cioè Prince) e il tipo di pseudonimo (se disponibile)).
@@ -51,18 +105,43 @@ JOIN artist_alias alias ON alias.artist = artist.id
 JOIN artist_alias_type type ON alias.type = type.id
 WHERE artist.name = 'Prince'
 
+--************
+--Per risolvere questa query dobbiamo trovare la tupla che rappresenta Prince e poi 
+--utilizzare la sua chiave primaria per trovare gli pseudonimi contenuti nella tabella degli alias.
+--Dato che la query richiede anche il tipo di pseudonimo, eseguiamo una semplice join tra gli alias e i tipi di pseudonimo.
+--Il primo sottoproblema consiste nell'individuare Price:
+SELECT *
+FROM artist
+WHERE artist.name = 'Prince'
+--NB: in questa fase, dato che il nome dell'artista non costituisce chiave primaria, potremmo incontrare duplicati.
+--Potremmo risolvere il problema controllando dei dati extra come la data di nascita o le canzoni create, ma comunque
+--la query risulterebbe ambigua. Inoltre, in quel caso non potremmo sapere di quale 'Prince' parli la query.
+--Ammettiamo quindi di mostrare entrambi i risultati in caso di duplicato. Il db ne contiene uno.
+--La parte successiva della query consiste soltanto in due semplici join senza condizioni particolari.
+
+--Potremmo filtrare gli pseudonimi del tipo "search hint" ma alcuni sono rilevanti.
+
+------------------------------------------------------------------------------------------------------------------------
 
 --Query 6:
 --Elencare le release di gruppi inglesi ancora in attività (il risultato deve contenere il nome del gruppo e il nome
 --della release e essere ordinato per nome del gruppo e nome della release)
 
-SELECT artist.name AS artist, release_group.name AS release FROM release_group 
+SELECT artist.name AS artist, release_group.name AS release 
+FROM release_group 
+--TODO cosi non escludi automaticamente tutti gli artisti che non hanno mai fatto una release?
 JOIN artist_credit ON release_group.artist_credit = artist_credit.id
 JOIN artist_credit_name ON artist_credit.id = artist_credit_name.artist_credit
 JOIN artist ON artist.id = artist_credit_name.artist AND artist.ended = FALSE
 JOIN artist_type ON artist.type = artist_type.id AND artist_type.name = 'Group'
 JOIN area ON artist.area = area.id AND area.name = 'United Kingdom' 
 ORDER BY artist.name, release_group.name
+
+--************
+--Per risolvere questa query dobbiamo trovare, per ogni artista, la sua area di appartenenza
+--e se è ancora in attività (artist.ended).
+
+------------------------------------------------------------------------------------------------------------------------
 
 --Query 7:
 --Trovare le release in cui il nome dell’artista è diverso dal nome accreditato nella release (il risultato deve
@@ -75,6 +154,18 @@ JOIN artist_credit ON release.artist_credit = artist_credit.id
 JOIN artist_credit_name ON artist_credit.id = artist_credit_name.artist_credit
 JOIN artist ON artist.id = artist_credit_name.artist
 WHERE artist.name <> artist_credit.name
+
+--************
+--Per prima cosa associamo ad ogni release l'artista accreditato, il nome e da quest'ultimo 
+--ricaviamo l'artista.
+--L'unica parte interessante della query è la selezione che include le tuple in cui il nome dell'artista associato
+--utilizzando le chiavi è effettivamente diverso da quello che appare nella tabella artist_credit
+
+--Possiamo verificare la correttezza della query osservando i risultati: la colonna artista_accreditato è
+--sempre differente da "artista". Dato che le join sono effettuate su chiavi esterne e primarie, possiamo dedurre
+--la correttezza della query
+
+------------------------------------------------------------------------------------------------------------------------
 
 --Query 8:
 --Trovare gli artisti con meno di tre release (il risultato deve contenere il nome dell’artista ed il numero di
@@ -89,6 +180,11 @@ RIGHT JOIN artist ON artist.id = artist_credit_name.artist
 GROUP BY artist.id
 HAVING count(release.id) < 3 
 
+--************
+
+
+------------------------------------------------------------------------------------------------------------------------
+
 --Query 9:
 --Trovare la registrazione più lunga di un’artista donna (il risultato deve contenere il nome della registrazione, la
 --sua durata in minuti e il nome dell’artista; tenere conto che le durate sono memorizzate in millesimi di secondo)
@@ -96,7 +192,7 @@ HAVING count(release.id) < 3
 --07/05/18
 
 --Versione 1:
-WITH female_rec AS --TODO SIAMO SICURI CHE LA MISURA IN MINUTI SIA GIUSTA? viene una registrazione moooolto lunga
+WITH female_rec AS 
 (
 	SELECT recording.name AS recording_name, length, artist.name AS artist_name
 	FROM recording
@@ -106,10 +202,10 @@ WITH female_rec AS --TODO SIAMO SICURI CHE LA MISURA IN MINUTI SIA GIUSTA? viene
 )
 SELECT DISTINCT recording_name, length/60000 + length%60/100. AS length, artist_name
 FROM female_rec
-WHERE length = ( SELECT MAX(length) AS max_length FROM female_rec )--Potrebbe ritornare più di un valore, in caso di pari lunghezza
+WHERE length = ( SELECT MAX(length) AS max_length FROM female_rec )
 
---Versione 2: --TODO SUL DB ORIGINALE NON TERMINA
-WITH female_rec AS --TODO SIAMO SICURI CHE LA MISURA IN MINUTI SIA GIUSTA? 
+--Versione 2:
+WITH female_rec AS
 (
 	SELECT recording.id, recording.name AS recording_name, length, artist.name AS artist_name
 	FROM recording
@@ -126,6 +222,24 @@ WHERE id NOT IN
 	JOIN female_rec r2 ON r1.length < r2.length
 )
 AND female_rec.length IS NOT NULL
+
+--************
+--Per risolvere questa query è necessario isolare tutte le tuple contenenti registrazioni
+--di artiste. Per fare questo, partiamo da recording e raggiungiamo l'attributo gender.name
+--passando tramile le chiavi esterne in artist_credit_name, artist e gender.
+--Entrambe le versioni partono in questo modo, tramite la query parziale che definisce female_rec.
+
+--A questo punto, la versione uno esegue semplicemente una query che seleziona il massimo
+--La versione due adotta un approccio diverso, che è a tutti gli effetti una negazione essenziale
+--che ha come insieme universo female_rec da cui vengono tolte tutte le registrazioni minori di almeno un'altra.
+--Per via della sua inottimalità, la versione 2 fa fatica a terminare quando il numero di tuple diventa molto grande.
+
+--NB:La query potrebbe ritornare più di un valore, in caso di pari lunghezza. Dato che non 
+--è specificato cosa fare in cui esistono due brani di massima lunghezza, semplicemente
+--accettiamo che vengano ritornati entrambi.
+
+
+------------------------------------------------------------------------------------------------------------------------
 
 --Query 10:
 --Elencare le lingue cui non corrisponde nessuna release (il risultato deve contenere il nome della lingua, il numero
@@ -147,11 +261,16 @@ LEFT JOIN release ON language.id = release.language
 WHERE release.language IS NULL
 ORDER BY language.name
 
+--************
+
+
+------------------------------------------------------------------------------------------------------------------------
+
 --Query 11:
 --Ricavare la seconda registrazione per lunghezza di un artista uomo (il risultato deve comprendere l'artista
 --accreditato, il nome della registrazione e la sua lunghezza) (scrivere due versioni della query).
 
---Versione 1: --TODO SUL DB ORIGINALE NON TERMINA (termina con un errore di "memoria")
+--Versione 1:
 --definita male_rec come tabella contenente le registrazioni degli artisti uomini,
 --prendiamo la registrazione più lunga tra tutte le registrazioni minori della più lunga in assoluto.
 WITH male_rec AS 
@@ -167,7 +286,7 @@ SELECT DISTINCT *
 FROM male_rec
 WHERE length = (SELECT MAX(length) FROM male_rec WHERE length < (SELECT MAX(length) FROM male_rec))
 
---Versione 2: --TODO SUL DB ORIGINALE NON TERMINA
+--Versione 2:
 --Utilizzo il passaggio di binding per verificare che esista solamente un altro recording con lunghezza maggiore
 WITH male_rec AS 
 (
@@ -187,6 +306,17 @@ WHERE 1 =
 	WHERE male_rec.length > mr.length
 )
  
+--************
+--la tabella male_rec è costruita esattamente con lo stesso sistema di female_rec della query 9.
+--Nella versione 1, ricaviamo il massimo della tabella temporanea contenente tutte le registrazioni maschili
+--eccetto quella più lunga.
+--Nella versione 2, selezioniamo da male_rec solamente le tuple che abbiano una sola registrazione
+--di lunghezza maggiore all'interno della stessa tabella.
+--Entrambe le versioni hanno difficoltà a terminare sul database completo. L'assenza di LIMIT e OFFSET è un forte vincolo in questo caso.
+--Come per la query 9, semplicemente presentiamo più tuple nel caso di multiple registrazioni più lunghe di tutte.
+
+------------------------------------------------------------------------------------------------------------------------
+
 --Query 12:
 --Per ogni stato esistente riportare la lunghezza totale delle registrazioni di artisti di quello stato (il risultato deve
 --comprendere il nome dello stato e la lunghezza totale in minuti delle registrazioni (0 se lo stato non ha
@@ -212,6 +342,11 @@ SELECT sub.name, sum(sub.recording_length)/60000 recording_length FROM --TODO SI
 	LEFT JOIN recording ON artist_credit.id = recording.artist_credit 
 ) AS sub
 GROUP BY sub.name
+
+--************
+
+
+------------------------------------------------------------------------------------------------------------------------
 
 --Query 13:
 --Ricavare gli artisti britannici che hanno pubblicato almeno 10 release (il risultato deve contenere il nome
@@ -242,6 +377,11 @@ JOIN
 ) uk_rel
 ON uk_rel.id = artist.id
 WHERE releases_num >= 10
+
+--************
+
+
+------------------------------------------------------------------------------------------------------------------------
 
 --Query 14:
 --Considerando il numero medio di tracce tra le release pubblicate su CD, ricavare gli artisti che hanno pubblicato
@@ -320,6 +460,11 @@ WHERE artist_credit.id IN
 GROUP BY artist_credit.name
 ORDER BY release_count DESC
 
+--************
+
+
+------------------------------------------------------------------------------------------------------------------------
+
 --Query 15:
 --Ricavare il primo artista morto dopo Louis Armstrong (il risultato deve contenere il nome dell’artista, la sua data
 --di nascita e la sua data di morte) (scrivere due versioni della query).
@@ -359,6 +504,11 @@ JOIN
 	AND MAKE_DATE(min.end_date_year,min.end_date_month,min.end_date_day) > MAKE_DATE(l.end_date_year,l.end_date_month,l.end_date_day) 
 ) min_artist 
 ON MAKE_DATE(a.end_date_year,a.end_date_month,a.end_date_day) = min_artist.death
+
+--************
+
+
+------------------------------------------------------------------------------------------------------------------------
 
 --Query 16:
 --Elencare le coppie di etichette discografiche che non hanno mai fatto uscire una release in comune ma hanno fatto
@@ -445,6 +595,10 @@ AND EXISTS
 )
 --ORDER BY l1.id DESC --Utile per confrontare il risultato con la versione 1
 
+--************
+
+
+------------------------------------------------------------------------------------------------------------------------
 
 --Query 17 (facoltativa):
 --Trovare il nome e la lunghezza della traccia più lunga appartenente a una release rilasciata in almeno due paesi (il
