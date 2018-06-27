@@ -363,7 +363,7 @@ GROUP BY artist.id, artist.name, area.name
 HAVING COUNT(release.name) >= 10
 
 --Versione 2:
-SELECT artist.name, 'United Kingdom' AS country, uk_rel.*
+SELECT artist.name, 'United Kingdom' AS country, uk_rel.releases_num
 FROM artist
 JOIN
 (
@@ -379,7 +379,40 @@ ON uk_rel.id = artist.id
 WHERE releases_num >= 10
 
 --************
+--Dato che dobbiamo trovare gli artisti con più di 10 release, è necessario collegare la
+--tabella artist con release. Joiniamo quindi utilizzando le chiavi esterne e primarie 
+--passando per artist_credit e artist_credit_name.
 
+--La prima versione, sfrutta una group by per ottenere immediatamente il risultato: 
+--raggruppiamo per artist.id, artist.name, area.name (che equivale a raggruppare per artist.id)
+--ed utilizziamo l'operatore di aggregazione COUNT per selezionare solo gli artisti con più di 10 release.
+
+--La seconda versione è logicamente equivalente alla prima ma sfrutta una sottoquery su cui poi
+--effettua una selezione. Fondamentalmente, questa sarebbe la strategia di risoluzione nel caso in cui
+--non avessimo a disposizione il costrutto "HAVING".
+
+--Possiamo verificare la correttezza delle query visualizzando le diverse release:
+SELECT release.id,release.name, artist.id 
+FROM release 
+JOIN artist_credit ON release.artist_credit = artist_credit.id
+JOIN artist_credit_name ON artist_credit.id = artist_credit_name.artist_credit
+JOIN artist ON artist.id = artist_credit_name.artist
+WHERE artist.id IN
+(--Query versione 1:
+	SELECT artist.id
+	FROM release 
+	JOIN artist_credit ON release.artist_credit = artist_credit.id
+	JOIN artist_credit_name ON artist_credit.id = artist_credit_name.artist_credit
+	JOIN artist ON artist.id = artist_credit_name.artist
+	JOIN area ON artist.area = area.id AND area.name = 'United Kingdom'
+	GROUP BY artist.id, artist.name, area.name
+	HAVING COUNT(release.name) >= 10
+)
+ORDER BY artist.id
+--Notiamo come per ogni id dell'artista esistano diverse release (sempre più di 10)
+--Notiamo inoltre come i risultati siano equivalenti:
+--Basta inserire una EXCEPT tra una query e l'altra per ottenere in output una relazione vuota.
+--(questo deve valere a prescindere dall'ordinamento delle query) 
 
 ------------------------------------------------------------------------------------------------------------------------
 
@@ -469,9 +502,6 @@ ORDER BY release_count DESC
 --Ricavare il primo artista morto dopo Louis Armstrong (il risultato deve contenere il nome dell’artista, la sua data
 --di nascita e la sua data di morte) (scrivere due versioni della query).
 
---Dalla documentazione: Begin date represents date of birth, and end date represents date of death.
---Questo vale solo per le persone, dobbiamo quindi usare 'Person' come artist_type
-
 --Versione 1:
 SELECT a.name, MAKE_DATE(a.begin_date_year,a.begin_date_month,a.begin_date_day) AS birth, MAKE_DATE(a.end_date_year,a.end_date_month,a.end_date_day) AS death
 FROM artist a
@@ -496,7 +526,7 @@ ON MAKE_DATE(a.end_date_year,a.end_date_month,a.end_date_day) =  ar.death
 SELECT a.name, MAKE_DATE(a.begin_date_year,a.begin_date_month,a.begin_date_day) AS birth, MAKE_DATE(a.end_date_year,a.end_date_month,a.end_date_day) AS death
 FROM artist a
 JOIN
-(
+(--Artisti con data di morte maggiore di Louis
 	SELECT MIN(MAKE_DATE(min.end_date_year,min.end_date_month,min.end_date_day)) AS death
 	FROM artist AS min
 	JOIN artist_type ON min.type = artist_type.id AND artist_type.name = 'Person'
@@ -506,7 +536,28 @@ JOIN
 ON MAKE_DATE(a.end_date_year,a.end_date_month,a.end_date_day) = min_artist.death
 
 --************
+--Dalla documentazione: "Begin date represents date of birth, and end date represents date of death."
+--Questo vale SOLO per le persone, dobbiamo quindi usare 'Person' come artist_type
+--Per questa query, dobbiamo partire ricercando la tupla contenente le informazioni su
+--Louis Armstrong. Valgono le stesse considerazioni riportate per la query di Prince (5)
+SELECT MAKE_DATE(end_date_year,end_date_month,end_date_day) AS death
+FROM artist 
+WHERE name = 'Louis Armstrong'
+--Nella versione 1, ricaviamo il minimo tra le date maggiori di quella della morte di Louis.
+--Anche qui, come in altre situazioni, mostriamo più tuple nel caso in cui ci siano due artisti morti
+--per primi dopo Louis.
+--La versione 2 arriva allo stesso risultato sfruttando una self join, in cui vengono eliminati gli artisti
+--con data minore o uguale a Louis.
 
+--Possiamo convincerci della correttezza ordinando gli artisti con data di morte maggiore
+--di Louis in senso crescente
+SELECT min.name, MAKE_DATE(min.end_date_year,min.end_date_month,min.end_date_day) AS death
+FROM artist AS min
+JOIN artist_type ON min.type = artist_type.id AND artist_type.name = 'Person'
+JOIN artist AS l ON l.name = 'Louis Armstrong' 
+AND MAKE_DATE(min.end_date_year,min.end_date_month,min.end_date_day) > MAKE_DATE(l.end_date_year,l.end_date_month,l.end_date_day) 
+ORDER BY death
+--Notiamo che il primo della lista è lo stesso
 
 ------------------------------------------------------------------------------------------------------------------------
 
@@ -604,23 +655,42 @@ AND EXISTS
 --Trovare il nome e la lunghezza della traccia più lunga appartenente a una release rilasciata in almeno due paesi (il
 --risultato deve contenere il nome della traccia e la sua lunghezza in secondi) (scrivere due versioni della query).
 
---Versione 1: --TODO SUL DB ORIGINALE NON TERMINA (Errore di memoria) --TODO Unità di misura sbagliata?
-WITH c_releases AS --Release uscite in più paesi
-(
+--Versione 1:
+SELECT DISTINCT track.name, track.length/1000.
+FROM track
+JOIN
+(--Lunghezza massima delle track che ci interessano
+	SELECT MAX(track.length) AS max_length
+	FROM track
+	JOIN medium ON track.medium = medium.id
+	JOIN
+	(--Selezioniamo le release rilasciate in almeno due paesi
+		SELECT release --,COUNT(*)
+		from release_country
+		GROUP BY release
+		HAVING COUNT(*)>1
+	) c_releases 
+	ON medium.release = c_releases.release
+) max_track
+ON track.length = max_track.max_length
+
+--Versione 2:
+WITH c_releases AS 
+(--Release uscite in più paesi
 	SELECT release --,COUNT(*)
 	FROM release_country
 	GROUP BY release
 	HAVING COUNT(*)>1
 ),
-c_tracks AS --track appartenenti a release uscite in più paesi 
-(
+c_tracks AS 
+(--track appartenenti a release uscite in più paesi 
 	SELECT track.id, track.name, track.length
 	FROM track
 	JOIN medium ON track.medium = medium.id
 	JOIN release ON medium.release = release.id
 	JOIN c_releases ON release.id = c_releases.release
 )
-SELECT c_tracks.name, c_tracks.length 
+SELECT c_tracks.name, c_tracks.length/1000.
 FROM c_tracks
 WHERE c_tracks.id NOT IN --Negazione essenziale: escludiamo tutte le tuple minori di qualcun'altra
 (
@@ -629,22 +699,27 @@ WHERE c_tracks.id NOT IN --Negazione essenziale: escludiamo tutte le tuple minor
 	JOIN c_tracks c2 ON c1.length < c2.length
 )
 
---Versione 2: --TODO Unità di misura sbagliata?
-SELECT DISTINCT track.name, track.length
-FROM track
-JOIN
-(
-	SELECT MAX(track.length) AS max_length
-	FROM track
-	JOIN medium ON track.medium = medium.id
-	JOIN release ON medium.release = release.id
-	JOIN
-	(
-		SELECT release --,COUNT(*)
-		from release_country
-		GROUP BY release
-		HAVING COUNT(*)>1
-	) c_releases 
-	ON release.id = c_releases.release
-) max_track
-ON track.length = max_track.max_length
+--************
+--Per risolvere questa query, partiamo ottenendo la lista delle release uscite in più paesi:
+SELECT release --,COUNT(*)
+from release_country
+GROUP BY release
+HAVING COUNT(*)>1
+--NB:essendo release e country chiavi di release_country, possiamo effettuare un count senza distinct:
+--Raggruppando per release, non possiamo che includere paesi diversi tra loro nel raggruppamento.
+
+--Una volta fatto ciò, possiamo procedere come nelle precedenti query alla ricerca della traccia
+--di lunghezza massima.
+
+--Nella versione 1, ci assicuriamo di eliminare tutte le track appartenenti a release che non
+--ci interessano effettuando una Join con la tabella di release filtrata (c_releases).
+--A questo punto selezioniamo il massimo usando MAX.
+--NB: anche in questa query potremmo ritornare più valori nel caso in cui esistano due track della stessa
+--lunghezza come massimo. Dato che la richiesta non specifica che cosa fare in questi casi, noi riportiamo entrambe.
+
+--La versione 2 sfrutta invece una negazione essenziale per raggiungere lo stesso risultato.
+--Per prima cosa vengono costruite c_releases (già spiegata sopra) c_tracks, ovvero tutte
+--le track associabili a release di c_releases.
+--Una volta fatto questo eseguiamo una semplice negazione essenziale utilizzando c_tracks.
+
+--La versione 2 mette in difficoltà il db completo per via della sua inottimalità.
