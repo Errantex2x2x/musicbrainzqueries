@@ -494,7 +494,8 @@ ORDER BY artist.id
 
 --Versione 1
 WITH average AS( --Numero medio di tracce tra le release pubblicate su cd
-	SELECT avg(medium.track_count) FROM medium
+	SELECT avg(medium.track_count) 
+	FROM medium
 	JOIN medium_format ON medium.format = medium_format.id AND medium_format.name = 'CD'
 ),
 
@@ -571,13 +572,19 @@ ORDER BY release_count DESC
 --
 --In altre parole il risultato è generato da tutti gli artisti TRANNE Artisti che NON hanno rilasciato ESCLUSIVAMENTE release su cd con più tracce della media
 --
---Per not_all usiamo lo stesso pattern di join 
+--Per not_all usiamo lo stesso pattern di join per entrambe le sottoquery sfruttando average per filtrare chi ha più tracce della media
 --
+--Generiamo la lista definitiva di artisti con (tutti gli artisti - not_all)
 --
+--Per il risultato finale joiniamo la lista deifnitiva di artisti con le release passando attraverso artist_credit e poi usando
+--group by sugli artisti + count delle release di ogni artista sulla relazione ottenuta.
+--infine ordinamo in ordine crescente usando la colonna del count ottenuto
 --
+--La seconda versione è simile alla prima ma sfrutta il costrutto NOT IN piuttosto che l'EXCEPT, in questo modo possiamo avere
+--una query molto piu compatta però allo stesso tempo risulta più pesante della prima versione sul database originale
 --
---
---Versione 2 pesante
+--Possiamo convincerci della correttezza eseguendo le sottoquery separatamente, e osservando come rispecchino la spiegazione
+--della logica della query
 
 ------------------------------------------------------------------------------------------------------------------------
 
