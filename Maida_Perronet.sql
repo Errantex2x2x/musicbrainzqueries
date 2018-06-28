@@ -380,7 +380,8 @@ WHERE 1 =
 --registrazioni) (scrivere due versioni della query).
 
 --Versione 1  
-SELECT area.name, COALESCE(sum(recording.length)/60000, 0) recording_length FROM area
+SELECT area.name, COALESCE(sum(recording.length)/60000, 0) recording_length 
+FROM area
 JOIN area_type ON area.type = area_type.id AND area_type.name = 'Country'	  
 JOIN artist ON artist.area = area.id
 JOIN artist_credit_name ON artist_credit_name.artist = artist.id 
@@ -389,9 +390,11 @@ JOIN recording ON artist_credit.id = recording.artist_credit
 GROUP BY area.id
 
 --Versione 2
-SELECT sub.name, sum(sub.recording_length)/60000 recording_length FROM
+SELECT sub.name, sum(sub.recording_length)/60000 recording_length 
+FROM
 (
-	SELECT area.name, COALESCE(recording.length, 0) recording_length FROM area 
+	SELECT area.name, COALESCE(recording.length, 0) recording_length 
+	FROM area 
 	JOIN area_type ON area.type = area_type.id AND area_type.name = 'Country'
 	JOIN artist ON artist.area = area.id
 	JOIN artist_credit_name ON artist_credit_name.artist = artist.id 
@@ -401,7 +404,18 @@ SELECT sub.name, sum(sub.recording_length)/60000 recording_length FROM
 GROUP BY sub.name
 
 --************
-
+--Partiamo da area che contiene l'elenco delle zone, prima di tutto assicuriamoci che la zona è in effetti 
+--uno stato, joiniamo con area_type e filtriamo gli stati con area_type.name = 'Country'
+--Dopodichè arriviamo ad ottenere informazioni sulla registrazione passando per artist, artist_credit_name, artist_credit e infine recording.
+--
+--A questo punto raggruppiamo per ogni area ed eseguiamo una sum, grazie a Coalesce avremo 0 in caso che non ci sia alcuna registrazione. 
+--
+--La seconda versione è simile ma sfrutta la left join, in questo modo possiamo usare Coalesce sui null creati dalla left join prima
+--di eseguire sum(), in questo modo la sum() sommerà gli zeri creati dalla left join + Coalesce.
+--
+--Con la seguente query possiamo filtrare gli stati senza alcuna registrazione.
+--
+--Possiamo convincerci della correttezza aggiungendo nella proiezione i valori delle chiavi e osservando che corrispondono
 
 ------------------------------------------------------------------------------------------------------------------------
 
@@ -517,7 +531,7 @@ GROUP BY artist_credit.name
 ORDER BY release_count DESC
 
 
---Versione 2 --TODO SUL DB ORIGINALE NON TERMINA
+--Versione 2 
 WITH average AS( 
 	SELECT avg(medium.track_count) FROM medium
 	JOIN medium_format ON medium.format = medium_format.id AND medium_format.name = 'CD'
@@ -551,7 +565,19 @@ GROUP BY artist_credit.name
 ORDER BY release_count DESC
 
 --************
-
+--Prima di tutto definiamo il numero medio di tracce tra le release pubblicate su cd, che rinominiamo 'average'. 
+--L'intera query è basata sulla seguente negazione essenziale:
+--Risultato = (Tutti gli artisti) - (Artisti che hanno rilasciato release su cd - Artisti che hanno rilasciato release su cd con più tracce della media)
+--
+--In altre parole il risultato è generato da tutti gli artisti TRANNE Artisti che NON hanno rilasciato ESCLUSIVAMENTE release su cd con più tracce della media
+--
+--Per not_all usiamo lo stesso pattern di join 
+--
+--
+--
+--
+--
+--Versione 2 pesante
 
 ------------------------------------------------------------------------------------------------------------------------
 
