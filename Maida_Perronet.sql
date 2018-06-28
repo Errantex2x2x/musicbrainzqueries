@@ -129,7 +129,6 @@ WHERE artist.name = 'Prince'
 
 SELECT artist.name AS artist, release_group.name AS release 
 FROM release_group 
---TODO cosi non escludi automaticamente tutti gli artisti che non hanno mai fatto una release?
 JOIN artist_credit ON release_group.artist_credit = artist_credit.id
 JOIN artist_credit_name ON artist_credit.id = artist_credit_name.artist_credit
 JOIN artist ON artist.id = artist_credit_name.artist AND artist.ended = FALSE
@@ -139,7 +138,14 @@ ORDER BY artist.name, release_group.name
 
 --************
 --Per risolvere questa query dobbiamo trovare, per ogni artista, la sua area di appartenenza
---e se è ancora in attività (artist.ended).
+--e se è ancora in attività (artist.ended = FALSE).
+--Attraversiamo quindi il database partendo dal release_group e colleghiamoci tramite chiavi esterne seguendo
+--il database, passando per artist_credit, artist_credit_name, artist. Da qui effettuiamo una join su area per
+--isolare gli artisti inglesi.
+--In ultimo ordiniamo per gli attributi che ci interessano.
+
+--Possiamo verificare la correttezza della query aggiungendo nella proiezione anche le chiavi tramite le quali si è
+--effettuata la join. In questo modo notiammo che gli attributi collegati dalla join sono congruenti.
 
 ------------------------------------------------------------------------------------------------------------------------
 
@@ -171,17 +177,40 @@ WHERE artist.name <> artist_credit.name
 --Trovare gli artisti con meno di tre release (il risultato deve contenere il nome dell’artista ed il numero di
 --release).
 
---Uso la right join per contare anche chi ha zero release
-
-SELECT artist.name, count(release.id) total_releases FROM release 
-RIGHT JOIN artist_credit ON release.artist_credit = artist_credit.id
-RIGHT JOIN artist_credit_name ON artist_credit.id = artist_credit_name.artist_credit
+SELECT artist.name, count(release.id) total_releases 
+FROM release 
+JOIN artist_credit ON release.artist_credit = artist_credit.id
+JOIN artist_credit_name ON artist_credit.id = artist_credit_name.artist_credit
 RIGHT JOIN artist ON artist.id = artist_credit_name.artist
 GROUP BY artist.id
 HAVING count(release.id) < 3 
 
 --************
 
+--Per questa query dobbiamo fare attenzione ad eventuali valori NULL, che dobbiamo considerare.
+--Usiamo quindi la right join per contare anche chi ha zero release.
+--Utilizziamo i join attraverso artist_credit e artist_credit_name per raggiungere artist.
+--Una volta effettuate queste associazioni abbiamo tutti i dati che ci interessano, raggruppiamo quindi per
+--artista.
+--Possiamo convincerci della correttezza della query notando come esistano anche artisti con 0 release rilasciate.
+--In particolare, osserviamo come nella seguente query:
+SELECT artist.id AS artist_id, release.id AS release_id
+FROM release 
+JOIN artist_credit ON release.artist_credit = artist_credit.id
+JOIN artist_credit_name ON artist_credit.id = artist_credit_name.artist_credit
+RIGHT JOIN artist ON artist.id = artist_credit_name.artist
+WHERE artist.id IN
+(--Query precedente:
+	SELECT artist.id 
+	FROM release 
+	JOIN artist_credit ON release.artist_credit = artist_credit.id
+	JOIN artist_credit_name ON artist_credit.id = artist_credit_name.artist_credit
+	RIGHT JOIN artist ON artist.id = artist_credit_name.artist
+	GROUP BY artist.id
+	HAVING count(release.id) < 3 
+)
+ORDER BY artist.id
+--restituisca solamente gli stessi artisti per meno di tre volte.
 
 ------------------------------------------------------------------------------------------------------------------------
 
@@ -200,7 +229,7 @@ WITH female_rec AS
 	JOIN artist ON artist.id = artist_credit_name.artist
 	JOIN gender ON gender.id = artist.gender AND gender.name = 'Female'
 )
-SELECT DISTINCT recording_name, length/60000 + length%60/100. AS length, artist_name
+SELECT DISTINCT recording_name, length/60000. AS length, artist_name
 FROM female_rec
 WHERE length = ( SELECT MAX(length) AS max_length FROM female_rec )
 
@@ -213,7 +242,7 @@ WITH female_rec AS
 	JOIN artist ON artist.id = artist_credit_name.artist
 	JOIN gender ON gender.id = artist.gender AND gender.name = 'Female'
 )
-SELECT recording_name, length/60000 + length%60/100. AS length, artist_name
+SELECT recording_name, length/60000. AS length, artist_name
 FROM female_rec
 WHERE id NOT IN
 (
@@ -238,7 +267,6 @@ AND female_rec.length IS NOT NULL
 --è specificato cosa fare in cui esistono due brani di massima lunghezza, semplicemente
 --accettiamo che vengano ritornati entrambi.
 
-
 ------------------------------------------------------------------------------------------------------------------------
 
 --Query 10:
@@ -246,23 +274,52 @@ AND female_rec.length IS NOT NULL
 --di release in quella lingua, cioè 0, e essere ordinato per lingua) (scrivere due versioni della query).
 
 --Versione 1 
-SELECT *, 0 AS num_releases FROM
+SELECT language.name, 0 AS num_releases 
+FROM language
+LEFT JOIN release ON language.id = release.language
+WHERE release.language IS NULL
+ORDER BY language.name
+--EXCEPT -- NB: per testare commenta le order by
+--Versione 2   
+SELECT *, 0 AS num_releases 
+FROM
 (
-	SELECT language.name FROM language
+	SELECT language.name 
+	FROM language
+
 	EXCEPT
-	SELECT language.name FROM language
+
+	SELECT language.name 
+	FROM language
 	JOIN release ON release.language = language.id
 ) AS result
 ORDER BY result.name
 
---Versione 2   
-SELECT language.name, 0 AS num_releases FROM language
-LEFT JOIN release ON language.id = release.language
-WHERE release.language IS NULL
-ORDER BY language.name
-
 --************
+--Per questa query dobbiamo effettuare una join tra le lingue e le release.
+--Nella prima versione, utilizziamo una left join per isolare le lingue a cui non corrisponde alcuna release.
+--Non è necessaria alcuna DISTINCT, poichè troveremo null solamente nelle tuple senza corrispondenza.
 
+--Nella seconda versione procediamo tramite negazione essenziale. escludendo dall'insieme universo language
+--tutte le lingue con una corrispondenza nelle release.
+
+--In entrambi i casi, ordiniamo per nome della lingua
+
+--Per convincerci della correttezza, ricaviamo le release nelle lingue selezionate:
+SELECT *
+FROM release
+WHERE language IN
+(--Query versione 1:
+	SELECT language.id 
+	FROM language
+	LEFT JOIN release ON language.id = release.language
+	WHERE release.language IS NULL
+	ORDER BY language.name
+)
+--Ci aspettiamo che il risultato sia una relazione vuota
+
+--In alternativa, possiamo inserire una EXCEPT tra le due versioni.A prescindere dall'ordinamento delle query,
+--ci aspettiamo una relazione vuota
 
 ------------------------------------------------------------------------------------------------------------------------
 
@@ -323,8 +380,8 @@ WHERE 1 =
 --registrazioni) (scrivere due versioni della query).
 
 --Versione 1  
-SELECT area.name, COALESCE(sum(recording.length)/60000, 0) recording_length FROM area --length/60000 + length%60/100 non cambia nulla nell'output
-JOIN area_type ON area.type = area_type.id AND area_type.name = 'Country'	      --TODO SIAMO SICURI CHE LA MISURA IN MINUTI SIA GIUSTA? 
+SELECT area.name, COALESCE(sum(recording.length)/60000, 0) recording_length FROM area
+JOIN area_type ON area.type = area_type.id AND area_type.name = 'Country'	  
 JOIN artist ON artist.area = area.id
 JOIN artist_credit_name ON artist_credit_name.artist = artist.id 
 JOIN artist_credit ON artist_credit.id = artist_credit_name.artist_credit
@@ -332,7 +389,7 @@ JOIN recording ON artist_credit.id = recording.artist_credit
 GROUP BY area.id
 
 --Versione 2
-SELECT sub.name, sum(sub.recording_length)/60000 recording_length FROM --TODO SIAMO SICURI CHE LA MISURA IN MINUTI SIA GIUSTA? 
+SELECT sub.name, sum(sub.recording_length)/60000 recording_length FROM
 (
 	SELECT area.name, COALESCE(recording.length, 0) recording_length FROM area 
 	JOIN area_type ON area.type = area_type.id AND area_type.name = 'Country'
