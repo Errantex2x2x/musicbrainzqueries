@@ -31,12 +31,12 @@ PRIMARY KEY (TitoloCatSito)
 
 CREATE TABLE Utente  (
 Username      VARCHAR(127),
-DataIscr      DATE,
+DataIscr      DATE NOT NULL,
 Nome          VARCHAR(127),
 Cognome       VARCHAR(127),
 Descrizione   VARCHAR(255),
-NumOpere      INTEGER,
-NumELettura   INTEGER,
+NumOpere      INTEGER NOT NULL DEFAULT '0',
+NumELettura   INTEGER NOT NULL DEFAULT '0',
 PRIMARY KEY (Username)
 );
 
@@ -44,12 +44,12 @@ CREATE TABLE Libro  (
 Titolo        VARCHAR(127),
 Autore        VARCHAR(127),
 Descrizione   VARCHAR(255),
-NumVoti       INTEGER,
-Numletture    INTEGER,
-NumCapitoli   INTEGER,
+NumVoti       INTEGER NOT NULL DEFAULT '0',
+Numletture    INTEGER NOT NULL DEFAULT '0',
+NumCapitoli   INTEGER NOT NULL DEFAULT '0',
 CatSito       VARCHAR(127),
 PRIMARY KEY (Titolo, Autore),
-FOREIGN KEY (CatSito) REFERENCES CategoriaSito(TitoloCatSito),
+FOREIGN KEY (CatSito) REFERENCES CategoriaSito(TitoloCatSito), --Can be null
 FOREIGN KEY (Autore) REFERENCES Utente(Username)
 );
 
@@ -66,7 +66,7 @@ FOREIGN KEY (Libro2, Autore2) REFERENCES Libro(Titolo, Autore)
 CREATE TABLE Follow  (
 Seguitore     VARCHAR(127),
 Seguito       VARCHAR(127),
-DataFollow    DATE,
+DataFollow    DATE NOT NULL,
 PRIMARY KEY (Seguitore, Seguito),
 FOREIGN KEY (Seguitore) REFERENCES Utente(Username),
 FOREIGN KEY (Seguito) REFERENCES Utente(Username)
@@ -101,7 +101,7 @@ FOREIGN KEY (TitoloLibro,AutoreLibro) REFERENCES Libro(Titolo,Autore)
 CREATE TABLE Categoria  (
 TitoloCat     VARCHAR(127),
 Descrizione   VARCHAR(127),
-IsTag         BOOLEAN,
+IsTag         BOOLEAN NOT NULL,
 PRIMARY KEY (TitoloCat)
 );
 
@@ -125,17 +125,17 @@ CREATE TABLE Capitolo  (
 NumCapitolo   INTEGER,
 TitoloLibro   VARCHAR(127),
 AutoreLibro   VARCHAR(127),
-TitoloCapitolo VARCHAR(127),
+TitoloCapitolo VARCHAR(127) NOT NULL,
 PRIMARY KEY (NumCapitolo, TitoloLibro, AutoreLibro),
 FOREIGN KEY (TitoloLibro,AutoreLibro) REFERENCES Libro(Titolo,Autore)
 );
 
 CREATE TABLE Paragrafo  (
 IdParagrafo   INTEGER,
-NumCapitolo   INTEGER,
-TitoloLibro   VARCHAR(127),
-AutoreLibro   VARCHAR(127),
-Testo         TEXT,
+NumCapitolo   INTEGER NOT NULL,
+TitoloLibro   VARCHAR(127) NOT NULL,
+AutoreLibro   VARCHAR(127) NOT NULL,
+Testo         TEXT NOT NULL,
 PRIMARY KEY (IdParagrafo),
 FOREIGN KEY (NumCapitolo, TitoloLibro, AutoreLibro) REFERENCES Capitolo(NumCapitolo, TitoloLibro, AutoreLibro)
 );
@@ -144,7 +144,7 @@ CREATE TABLE Commento  (
 IdParagrafo   INTEGER,
 Username      VARCHAR(127),
 DataOra       DATE,
-TestoCommento VARCHAR(127),
+TestoCommento VARCHAR(127) NOT NULL,
 PRIMARY KEY (IdParagrafo, Username, DataOra),
 FOREIGN KEY (IdParagrafo) REFERENCES Paragrafo(IdParagrafo),
 FOREIGN KEY (Username) REFERENCES Utente(Username)
