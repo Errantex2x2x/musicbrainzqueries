@@ -75,6 +75,7 @@ FOREIGN KEY (Seguito) REFERENCES Utente(Username)
 CREATE TABLE ElencoDiLettura  (
 Nome          VARCHAR(127),
 Creatore      VARCHAR(127),
+Privato		  BOOLEAN,
 PRIMARY KEY (Nome, Creatore),
 FOREIGN KEY (Creatore) REFERENCES Utente(Username)
 );
@@ -100,7 +101,7 @@ FOREIGN KEY (TitoloLibro,AutoreLibro) REFERENCES Libro(Titolo,Autore)
 CREATE TABLE Categoria  (
 TitoloCat     VARCHAR(127),
 Descrizione   VARCHAR(127),
-IsTag         VARCHAR(127),
+IsTag         BOOLEAN,
 PRIMARY KEY (TitoloCat)
 );
 
