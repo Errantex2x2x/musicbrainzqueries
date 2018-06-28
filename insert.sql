@@ -53,14 +53,6 @@ INSERT INTO libro VALUES ('Le Cronache Di Narnia', 'C.S. Lewis', '', 5, 6000, 1,
 INSERT INTO libro VALUES ('Le Cronache Del Ghiaccio E Del Fuoco', 'George R.R. Martin', '', 500, 10000, 2, 'Primo Piano');
 INSERT INTO libro VALUES ('Ma I Vegani Sognano Pecore Elettriche?', 'Odio Di Palma', 'Ottimo libro, molto vegano', 30, 400, 1, 'Nuovo');
 
---Correlazione
-INSERT INTO correlazione VALUES('1984', 'George Orwell', 'Blade Runner', 'Philip K. Dick');
-INSERT INTO correlazione VALUES('Harry Potter E L Ordine Della Fenice', 'J.K. Rowling', 'Harry Potter E La Camera Dei Segreti', 'J.K. Rowling');
-INSERT INTO correlazione VALUES('Harry Potter E L Ordine Della Fenice', 'J.K. Rowling', 'Le Cronache Del Ghiaccio E Del Fuoco', 'George R.R. Martin');
-INSERT INTO correlazione VALUES('Harry Potter E La Camera Dei Segreti', 'J.K. Rowling', 'Le Cronache Del Ghiaccio E Del Fuoco', 'George R.R. Martin');
-INSERT INTO correlazione VALUES('Il Teorema Del Pappagallo', 'Denis Guedj', 'Un Eterna Ghirlanda Brillante', 'Douglas R. Hofstadter');
-INSERT INTO correlazione VALUES('Ma I Vegani Sognano Pecore Elettriche?', 'Odio Di Palma', 'Farmageddon', 'Marco Maida');
-
 --Follow
 INSERT INTO follow VALUES('Marco Perronet', 'Marco Maida', '2015-11-23');
 INSERT INTO follow VALUES('Marco Maida', 'Marco Perronet', '2000-03-17');
@@ -160,10 +152,27 @@ INSERT INTO scritturacorrelata VALUES('Romanzi', 'George Orwell');
 INSERT INTO scritturacorrelata VALUES('Fantasy', 'J.K. Rowling');
 INSERT INTO scritturacorrelata VALUES('Avventura', 'J.K. Rowling');
 
+--Capitolo
+INSERT INTO capitolo VALUES(1, 'Blade Runner', 'Philip K. Dick', 'In interdum');
+INSERT INTO capitolo VALUES(2, 'Blade Runner', 'Philip K. Dick', 'Pellentesque habitant');
+INSERT INTO capitolo VALUES(3, 'Blade Runner', 'Philip K. Dick', 'Curabitur at');
+INSERT INTO capitolo VALUES(1, 'Come Non Scrivere', 'Claudio Giunta', 'Suspendisse vitae');
+INSERT INTO capitolo VALUES(1, 'Il Teorema Del Pappagallo', 'Denis Guedj', 'Sed vestibulum');
+INSERT INTO capitolo VALUES(1, 'Harry Potter E La Camera Dei Segreti', 'J.K. Rowling', 'Nam felis');
+INSERT INTO capitolo VALUES(1, '1984', 'George Orwell', 'Phasellus lobortis');
+INSERT INTO capitolo VALUES(1, 'La Fattoria Degli Animali', 'George Orwell', 'Nunc pellentesque');
+INSERT INTO capitolo VALUES(2, 'La Fattoria Degli Animali', 'George Orwell', 'Aenean mattis');
+INSERT INTO capitolo VALUES(1, 'Harry Potter E L Ordine Della Fenice', 'J.K. Rowling', 'Nunc faucibus');
+INSERT INTO capitolo VALUES(2, 'Harry Potter E L Ordine Della Fenice', 'J.K. Rowling', 'Praesent iaculis');
+INSERT INTO capitolo VALUES(1, 'Un Eterna Ghirlanda Brillante', 'Douglas R. Hofstadter', 'Vivamus in');
+INSERT INTO capitolo VALUES(1, 'Disegnum', 'Marco Perronet', 'Sed a');
+INSERT INTO capitolo VALUES(1, 'Farmageddon', 'Marco Maida', 'Quisque id');
+INSERT INTO capitolo VALUES(1, 'Le Cronache Di Narnia', 'C.S. Lewis', 'Donec vel');
+INSERT INTO capitolo VALUES(1, 'Le Cronache Del Ghiaccio E Del Fuoco', 'George R.R. Martin', 'Praesent in');
+INSERT INTO capitolo VALUES(2, 'Le Cronache Del Ghiaccio E Del Fuoco', 'George R.R. Martin', 'Aliquam eu');
+INSERT INTO capitolo VALUES(1, 'Ma I Vegani Sognano Pecore Elettriche?', 'Odio Di Palma', 'Ut felis');
+
 --Paragrafo
-INSERT INTO paragrafo VALUES(0, 
-'Etiam luctus non leo vel luctus. Nunc mollis felis a porta ultrices. Etiam in ligula nulla. Aliquam et tincidunt massa. Pellentesque facilisis efficitur sem vitae commodo. Suspendisse maximus rutrum sodales. Nunc commodo iaculis iaculis. Aenean pretium malesuada orci et convallis. Quisque egestas iaculis orci vel blandit. Sed sit amet velit neque. Vestibulum ante ipsum primis in faucibus orci luctus et ultrices posuere cubilia Curae; Mauris vehicula lacus quis nibh commodo imperdiet. Nam posuere euismod quam et tincidunt.'
-);
 INSERT INTO paragrafo VALUES(1, 1, 'Blade Runner', 'Philip K. Dick',
 'Proin viverra, nibh in consectetur maximus, orci leo dictum dolor, vel tincidunt est ante eu orci. Etiam posuere, sapien id elementum consequat, nibh lectus finibus ipsum, id molestie nisl ex ut turpis. Aliquam gravida, nulla id iaculis pharetra, metus nibh blandit nunc, eu maximus eros elit et dolor. Vivamus euismod a risus quis fermentum. Donec vitae risus ligula. Pellentesque iaculis eleifend fermentum. In lacinia vehicula orci, nec mattis purus malesuada eu. Mauris imperdiet at enim eu vestibulum. Morbi mauris lectus, porta semper felis nec, varius egestas nunc. Pellentesque habitant morbi tristique senectus et netus et malesuada fames ac turpis egestas. Praesent pulvinar non sem quis aliquam. Donec eget mi sed purus vulputate finibus. '
 );
@@ -206,7 +215,7 @@ INSERT INTO paragrafo VALUES(13, 1, 'Harry Potter E L Ordine Della Fenice', 'J.K
 INSERT INTO paragrafo VALUES(14, 2, 'Harry Potter E L Ordine Della Fenice', 'J.K. Rowling',
 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed vulputate arcu non sem pretium, quis tempor dui aliquet. Sed scelerisque, tortor sit amet aliquet laoreet, ex arcu cursus arcu, vel euismod nulla nunc at enim. Praesent facilisis lectus quis efficitur dapibus. Nam pellentesque, eros at tempus malesuada, justo sem finibus arcu, nec interdum orci libero vitae nulla. Cras ut laoreet justo. Donec sodales odio a ultricies convallis. Cras consectetur pulvinar ullamcorper. Phasellus auctor purus vitae quam accumsan, in vestibulum mi pulvinar. Duis nunc risus, sagittis ac mattis ac, pretium nec tortor. Orci varius natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus. Quisque lacus tortor, sollicitudin a pharetra auctor, semper ut tortor. Duis a nibh lacus.'
 );
-INSERT INTO paragrafo VALUES(15, 'Farmageddon', 'Marco Maida',
+INSERT INTO paragrafo VALUES(15, 1,'Farmageddon', 'Marco Maida',
 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Maecenas placerat arcu eu mauris semper ullamcorper. Nullam semper mauris tortor, vel pretium urna bibendum vel. Curabitur pulvinar varius libero, a suscipit nunc sodales et. Phasellus vel tincidunt nulla, a pellentesque nunc. Duis ultrices id tellus vitae ullamcorper. Fusce sodales a sapien vel accumsan. Ut porta ante non dignissim suscipit. Quisque aliquet commodo magna. Proin rhoncus mi et urna egestas, vitae sollicitudin sapien pharetra. In et tortor magna. Nunc maximus aliquet volutpat. Curabitur in semper diam, scelerisque convallis mi. Donec vestibulum vestibulum diam sit amet vestibulum. Curabitur nulla lorem, facilisis a elementum eu, volutpat eget lorem. Morbi tincidunt ligula eget ultrices volutpat. Cras ac elementum massa, sit amet hendrerit mi.'
 );
 INSERT INTO paragrafo VALUES(16, 1, 'Disegnum', 'Marco Perronet',
@@ -225,26 +234,6 @@ INSERT INTO paragrafo VALUES(20, 1, 'Ma I Vegani Sognano Pecore Elettriche?', 'O
 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Phasellus sem ex, ultrices quis vehicula ac, congue non nisl. Etiam lobortis nisl et arcu fringilla ornare. Vestibulum vel erat blandit, luctus mauris et, imperdiet dui. Mauris fermentum ligula sem, et condimentum elit consectetur a. Quisque pellentesque a erat sed consequat. Integer dictum nisi sit amet dolor sagittis, scelerisque tempor risus ullamcorper. Fusce quis varius nibh. Donec fermentum diam at tincidunt sollicitudin. Aliquam erat volutpat. In augue augue, tincidunt sit amet nibh id, dictum accumsan mi. Nullam dictum neque quis massa tempus, non pharetra mi blandit. Vivamus sit amet lacus bibendum mi efficitur sodales sit amet sed tellus. Aenean at nisi sollicitudin, pulvinar ante ac, facilisis ante.'
 );
 
---Capitolo
-INSERT INTO scritturacorrelata VALUES(1, 'Blade Runner', 'Philip K. Dick', 'In interdum');
-INSERT INTO scritturacorrelata VALUES(2, 'Blade Runner', 'Philip K. Dick', 'Pellentesque habitant');
-INSERT INTO scritturacorrelata VALUES(3, 'Blade Runner', 'Philip K. Dick', 'Curabitur at');
-INSERT INTO scritturacorrelata VALUES(1, 'Come Non Scrivere', 'Claudio Giunta', 'Suspendisse vitae');
-INSERT INTO scritturacorrelata VALUES(1, 'Il Teorema Del Pappagallo', 'Denis Guedj', 'Sed vestibulum');
-INSERT INTO scritturacorrelata VALUES(1, 'Harry Potter E La Camera Dei Segreti', 'J.K. Rowling', 'Nam felis');
-INSERT INTO scritturacorrelata VALUES(1, '1984', 'George Orwell', 'Phasellus lobortis');
-INSERT INTO scritturacorrelata VALUES(1, 'La Fattoria Degli Animali', 'George Orwell', 'Nunc pellentesque');
-INSERT INTO scritturacorrelata VALUES(2, 'La Fattoria Degli Animali', 'George Orwell', 'Aenean mattis');
-INSERT INTO scritturacorrelata VALUES(1, 'Harry Potter E L Ordine Della Fenice', 'J.K. Rowling', 'Nunc faucibus');
-INSERT INTO scritturacorrelata VALUES(2, 'Harry Potter E L Ordine Della Fenice', 'J.K. Rowling', 'Praesent iaculis');
-INSERT INTO scritturacorrelata VALUES(1, 'Un Eterna Ghirlanda Brillante', 'Douglas R. Hofstadter', 'Vivamus in');
-INSERT INTO scritturacorrelata VALUES(1, 'Disegnum', 'Marco Perronet', 'Sed a');
-INSERT INTO scritturacorrelata VALUES(1, 'Farmageddon', 'Marco Maida', 'Quisque id');
-INSERT INTO scritturacorrelata VALUES(1, 'Le Cronache Di Narnia', 'C.S. Lewis', 'Donec vel');
-INSERT INTO scritturacorrelata VALUES(1, 'Le Cronache Del Ghiaccio E Del Fuoco', 'George R.R. Martin', 'Praesent in');
-INSERT INTO scritturacorrelata VALUES(2, 'Le Cronache Del Ghiaccio E Del Fuoco', 'George R.R. Martin', 'Aliquam eu');
-INSERT INTO scritturacorrelata VALUES(1, 'Ma I Vegani Sognano Pecore Elettriche?', 'Odio Di Palma', 'Ut felis');
-
 --Commento
 INSERT INTO commento VALUES(20, 'Marco Maida', '2015-11-23', 'Bel passaggio, molto vegano');
 INSERT INTO commento VALUES(17, 'Marco Perronet', '2000-03-17', 'Praesent iaculis augue a erat pulvinar tempor. In vulputate.');
@@ -254,3 +243,22 @@ INSERT INTO commento VALUES(2, 'J.K. Rowling', '2014-10-23', 'Maecenas vel iacul
 INSERT INTO commento VALUES(2, 'Marco Perronet', '2014-10-23', 'Curabitur vulputate urna sem. Cras tortor nisl, lacinia eu.');
 INSERT INTO commento VALUES(13, 'Odio Di Palma', '2015-11-23', 'Maecenas pretium sodales tortor eget elementum. Etiam porttitor eget.');
 INSERT INTO commento VALUES(13, 'Marco Maida', '2000-03-17', 'Mauris rhoncus imperdiet metus ultrices efficitur. Suspendisse quis ante.');
+
+
+/*
+--Usa queste query per verificare i dati sul db
+SELECT * FROM categoria
+SELECT * FROM utente
+SELECT * FROM associazionecat
+SELECT * FROM commento
+SELECT * FROM libro
+SELECT * FROM scritturacorrelata
+SELECT * FROM capitolo
+SELECT * FROM paragrafo
+SELECT * FROM categoriasito
+SELECT * FROM correlazione
+SELECT * FROM follow
+SELECT * FROM lettura
+SELECT * FROM elencodilettura
+SELECT * FROM composizioneelencolettura
+*/

@@ -1,20 +1,19 @@
 ﻿/*
 --Use this to delete all tables
-drop table if exists "categoria" cascade;
-drop table if exists "utente" cascade;
-drop table if exists "associazionecat" cascade;
-drop table if exists "commento" cascade;
-drop table if exists "libro" cascade;
-drop table if exists "scritturacorrelata" cascade;
-drop table if exists "partizionamentocapitolo" cascade;
-drop table if exists "capitolo" cascade;
-drop table if exists "paragrafo" cascade;
-drop table if exists "categoriasito" cascade;
-drop table if exists "correlazione" cascade;
-drop table if exists "follow" cascade;
-drop table if exists "lettura" cascade;
-drop table if exists "elencodilettura" cascade;
-drop table if exists "composizioneelencolettura" cascade;
+DROP TABLE IF EXISTS "categoria" CASCADE;
+DROP TABLE IF EXISTS "utente" CASCADE;
+DROP TABLE IF EXISTS "associazionecat" CASCADE;
+DROP TABLE IF EXISTS "commento" CASCADE;
+DROP TABLE IF EXISTS "libro" CASCADE;
+DROP TABLE IF EXISTS "scritturacorrelata" CASCADE;
+DROP TABLE IF EXISTS "capitolo" CASCADE;
+DROP TABLE IF EXISTS "paragrafo" CASCADE;
+DROP TABLE IF EXISTS "categoriasito" CASCADE;
+DROP TABLE IF EXISTS "correlazione" CASCADE;
+DROP TABLE IF EXISTS "follow" CASCADE;
+DROP TABLE IF EXISTS "lettura" CASCADE;
+DROP TABLE IF EXISTS "elencodilettura" CASCADE;
+DROP TABLE IF EXISTS "composizioneelencolettura" CASCADE;
 
 --use this to get a query to delete all tables
 select 'drop table if exists "' || tablename || '" cascade;' 
