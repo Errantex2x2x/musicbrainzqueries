@@ -132,18 +132,12 @@ FOREIGN KEY (TitoloLibro,AutoreLibro) REFERENCES Libro(Titolo,Autore)
 
 CREATE TABLE Paragrafo  (
 IdParagrafo   INTEGER,
-Testo         TEXT,
-PRIMARY KEY (IdParagrafo)
-);
-
-CREATE TABLE PartizionamentoCapitolo  (
-IdParagrafo   INTEGER,
 NumCapitolo   INTEGER,
 TitoloLibro   VARCHAR(127),
 AutoreLibro   VARCHAR(127),
-PRIMARY KEY (IdParagrafo, NumCapitolo, TitoloLibro, AutoreLibro),
-FOREIGN KEY (IdParagrafo) REFERENCES Paragrafo(IdParagrafo),
-FOREIGN KEY (TitoloLibro,AutoreLibro) REFERENCES Libro(Titolo,Autore)
+Testo         TEXT,
+PRIMARY KEY (IdParagrafo),
+FOREIGN KEY (NumCapitolo, TitoloLibro, AutoreLibro) REFERENCES Capitolo(NumCapitolo, TitoloLibro, AutoreLibro)
 );
 
 CREATE TABLE Commento  (
