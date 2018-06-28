@@ -623,39 +623,44 @@ ORDER BY death
 --uscire una release in collaborazione con una medesima terza etichetta (il risultato deve comprendere i nomi delle
 --coppie di etichette discografiche) (scrivere due versioni della query).
 
---Versione 1: --TODO SUL DB ORIGINALE NON TERMINA (termina con un errore di "memoria")
-WITH no_common_release AS(
+--Versione 1:
+WITH no_common_release AS
+(
 	SELECT l1.id label1id, l1.name label1, l2.id label2id, l2.name label2 
 	FROM label l1 
 	JOIN label l2 ON l1.id <> L2.id --Ogni coppia di label
 
 	EXCEPT
 
-	SELECT DISTINCT l1.id, l1.name, l2.id, l2.name FROM label l1 --Coppie di label che hanno rilasciato release in comune, ovvero che hanno collaborato
+	SELECT DISTINCT l1.id, l1.name, l2.id, l2.name 
+	FROM label l1 --Coppie di label che hanno rilasciato release in comune, ovvero che hanno collaborato
 	JOIN label l2 ON l1.id <> L2.id
 	JOIN release_label r_label1 ON r_label1.label = l1.id
 	JOIN release_label r_label2 ON r_label2.label = l2.id
 	WHERE r_label1.release = r_label2.release
 ),
 
-collaborations AS(
-	SELECT DISTINCT l1.id collab1id, l2.id collab2id FROM label l1 --Coppie di label che hanno rilasciato release in comune, ovvero che hanno collaborato
+collaborations AS
+(
+	SELECT DISTINCT l1.id collab1id, l2.id collab2id 
+	FROM label l1 --Coppie di label che hanno rilasciato release in comune, ovvero che hanno collaborato
 	JOIN label l2 ON l1.id <> L2.id
 	JOIN release_label r_label1 ON r_label1.label = l1.id
 	JOIN release_label r_label2 ON r_label2.label = l2.id
 	WHERE r_label1.release = r_label2.release
 ) 
 
-SELECT label1, label2 FROM no_common_release 
+SELECT label1, label2 
+FROM no_common_release 
 WHERE EXISTS
-(--l3 terza etichetta
+(--l3 terza etichetta in comune
 	SELECT l3.id 
 	FROM label l3
 	WHERE EXISTS
 	(--collaborazione fra l1 ed l3
 		SELECT c.collab1id 
 		FROM collaborations c
-		WHERE (c.collab1id = l3.id AND c.collab2id = no_common_release.label1id)
+		WHERE 	(c.collab1id = l3.id AND c.collab2id = no_common_release.label1id)
 			OR 
 			(c.collab1id = no_common_release.label1id AND c.collab2id = l3.id)
 	)
@@ -663,15 +668,16 @@ WHERE EXISTS
 	(--collaborazione fra l2 ed l3
 		SELECT c.collab1id 
 		FROM collaborations c
-		WHERE (c.collab1id = l3.id AND c.collab2id = no_common_release.label2id)
+		WHERE 	(c.collab1id = l3.id AND c.collab2id = no_common_release.label2id)
 			OR 
 			(c.collab1id = no_common_release.label2id AND c.collab2id = l3.id)
 	)
 )
 --ORDER BY no_common_release.label1id DESC --Utile per confrontare il risultato con la versione 2
 
+--EXCEPT
 
---Versione 2 --TODO SUL DB ORIGINALE NON TERMINA 
+--Versione 2
 SELECT l1.name label1, l2.name label2 
 FROM label l1 
 JOIN label l2 ON l1.id <> L2.id --Ogni coppia di label
@@ -705,7 +711,38 @@ AND EXISTS
 
 --************
 
+--Questa query risolve un'interrogazione molto elabolata.
+--Partiamo dal prodotto cartesiamo delle label
+SELECT l1.id label1id, l1.name label1, l2.id label2id, l2.name label2 
+FROM label l1 
+JOIN label l2 ON l1.id <> L2.id --Ogni coppia di label
 
+--A cui sottraiamo le label che hanno rilasciato release in comune
+EXCEPT
+
+--Utilizziamo questa relazione chiamandola collaborations:
+SELECT DISTINCT l1.id, l1.name, l2.id, l2.name 
+FROM label l1 --Coppie di label che hanno rilasciato release in comune, ovvero che hanno collaborato
+JOIN label l2 ON l1.id <> L2.id
+JOIN release_label r_label1 ON r_label1.label = l1.id
+JOIN release_label r_label2 ON r_label2.label = l2.id
+WHERE r_label1.release = r_label2.release
+
+--Ottenendo no_common_release.
+--La query finale è definita, partendo da no_common_release, come una selezione su di essa effettuata sulle tuple che
+--hanno una terza label in comune. Per fare questo utilizziamo la clausola EXISTS, in cui cerchiamo la terza label.
+--Per ridurre la verbosità, utilizziamo la relazione collaborations. Cerchiamo due tuple, una che si colleghi alla prima
+--label della coppia, l'altra che si colleghi alla seconda, e che siano tuple di collaborazione con la terza.
+
+--La versione 2 utilizza un approccio diverso: una volta eseguito il prodotto cartesiano delle label, utilizza più volte la clausola EXISTS.
+--In primo luogo vengono eliminate le release in comune, poi si ricerca una terza label in collaborazione con entrambe, seguendo lo stesso
+--pattern di risoluzione della versione 1.
+
+--Entrambe le query risultano molto pesanti sul db originale.
+
+--Possiamo convincerci della correttezza eseguendo le sottoquery e verificando la correttezza di questa.
+--Inoltre, utilizzando il costrutto EXCEPT, possiamo notare come le due versioni siano equivalenti. (otteniamo
+--una relazione vuota se poniamo una EXCEPT tra le due query)
 ------------------------------------------------------------------------------------------------------------------------
 
 --Query 17 (facoltativa):
